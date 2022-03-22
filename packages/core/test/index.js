@@ -1,6 +1,7 @@
 import { CmsBuilder } from '../dist/index.js';
 import { FolderLoader } from '../dist/folder.js';
 import { TextFileLoader } from '../dist/text-file.js';
+import { Query } from '../dist/query.js';
 
 const cms = CmsBuilder
   .use(new FolderLoader())
@@ -9,4 +10,7 @@ const cms = CmsBuilder
 
 await cms.loadRoot('./content');
 
-console.log(cms.rootEntry.subEntries[0].subEntries[0]);
+const query = Query.of(cms);
+const x = query.find('/folder01/sample01', 'txtfile');
+
+console.log(x);

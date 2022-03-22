@@ -1,12 +1,4 @@
-export interface Content<
-  Type extends string,
-  Public extends {},
-  Full extends Public
-  > {
-  type: `${Type}`,
-  public: Public,
-  full: Full,
-};
+import { Content } from './content.js';
 
 export interface EntryBase {
   readonly link: string;
@@ -31,21 +23,28 @@ export abstract class Entry<
     this.subEntries.push(...entries);
   }
 
-  public find(entryPath: string, contentType: string): Entry<any> | null {
+  public find(entryPath: string): Entry<any> | null {
     const firstSlashIdx = entryPath.indexOf('/');
     const link = firstSlashIdx > -1 ? entryPath.slice(0, firstSlashIdx) : entryPath;
-    const subEntry = this.subEntries.find((entry) => entry.base.link === link);
-
-    if (subEntry === undefined) {
+    const subEntry = link === '' ? this : this.findChild(link);
+    if (subEntry === null) {
       return null;
     }
 
     if (firstSlashIdx > -1) {
       const subPath = entryPath.slice(firstSlashIdx + 1);
-      return subEntry.find(subPath, contentType);
+      if (subPath === '') {
+        return subEntry;
+      }
+
+      return subEntry.find(subPath);
     }
 
-    return subEntry.contentType === contentType ? subEntry : null;
+    return subEntry;
+  }
+
+  public findChild(link: string): Entry<any> | null {
+    return this.subEntries.find((entry) => entry.base.link === link) ?? null;
   }
 
   public abstract fetch(): Promise<ContentType>;
@@ -60,44 +59,31 @@ export interface EntryLoader<ContentType extends Content<any, any, any>> {
   load<U extends Content<any, any, any>>(context: LoaderContext<U>, path: string): Promise<Entry<ContentType>>;
 }
 
-type TxtFile = Content<'txt', {}, { content: string }>;
-class TxtFileEntry extends Entry<TxtFile> {
-  public async fetch(): Promise<TxtFile> {
-    return {
-      type: 'txt',
-      public: {},
-      full: {
-        content: 'ahoj',
-      }
-    }
-  }
-}
-
-// class TxtFileLoader implements EntryLoader<TxtFile> {
-//   public readonly type: TxtFile['type'] = 'txt';
-
-//   public async load<U extends Content<any, any, any>>(context: LoaderContext<U>): Promise<Entry<TxtFile>> {
-//     return new TxtFileEntry();
-//   }
-// }
-
 export type Loaders<U extends Content<any, any, any>> = {
-  [K in U['type']]: EntryLoader<U>;
+  [K in U as K['type']]: EntryLoader<K>;
+};
+
+export type Entries<U extends Content<any, any, any>> = {
+  [K in U as K['type']]: Entry<K>;
 };
 
 export class Cms<U extends Content<any, any, any>> implements LoaderContext<U> {
   private loaders: Loaders<U>;
   private rootType: U['type'];
-  private rootEntry: Entry<any> | null = null;
+  private _rootEntry: Entry<any> | null = null;
 
   public constructor(loaders: Loaders<U>, rootType: U['type']) {
     this.rootType = rootType;
     this.loaders = loaders;
   }
 
+  public get rootEntry(): Entry<any> | null {
+    return this._rootEntry;
+  }
+
   public async loadRoot(rootFolder: string): Promise<void> {
     const loader = this.loaders[this.rootType];
-    this.rootEntry = await loader.load(this, rootFolder);
+    this._rootEntry = await loader.load(this, rootFolder);
   }
 
   public async load(type: U['type'], path: string): Promise<Entry<U>> {

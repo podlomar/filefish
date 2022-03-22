@@ -1,6 +1,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
-import { Content, Entry, EntryBase, EntryLoader, LoaderContext } from "./index.js";
+import { Content } from './content.js';
+import { Entry, EntryBase, EntryLoader, LoaderContext } from "./index.js";
 
 export type TextFile = Content<'txtfile', {}, { content: string }>;
 

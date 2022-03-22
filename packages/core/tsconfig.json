@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "strict": true,
+    "strictNullChecks": true,
     "outDir": "dist",
     "noImplicitAny": true,
     "module": "esnext",
