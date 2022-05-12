@@ -1,16 +1,6 @@
-import { CmsBuilder } from '../dist/index.js';
-import { FolderLoader } from '../dist/folder.js';
-import { TextFileLoader } from '../dist/text-file.js';
-import { Query } from '../dist/query.js';
+import { Cms } from '../dist/index.js';
+import { FileEntry, FolderEntry, FolderLoader } from '../dist/fsnodes.js';
 
-const cms = CmsBuilder
-  .use(new FolderLoader())
-  .use(new TextFileLoader())
-  .root('folder');
-
-await cms.loadRoot('./content');
-
-const query = Query.of(cms);
-const x = query.find('/folder01/sample01', 'txtfile');
-
-console.log(x);
+const cms = await Cms.load(new FolderLoader(), './content');
+const entry = cms.rootEntry.find('/folder01/sample01', FileEntry);
+console.log(entry);
