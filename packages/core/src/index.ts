@@ -1,4 +1,5 @@
-import { Entry, Class } from './entry.js';
+import { createFolderNode } from './fsysnodes.js';
+import { Entry } from './entry.js';
 import { EntryLoader } from './loader.js';
 
 export class Cms<Root extends Entry<any>> {
@@ -11,6 +12,7 @@ export class Cms<Root extends Entry<any>> {
   public static async load<Root extends Entry<any>>(
     loader: EntryLoader<Root>, rootFolder: string,
   ): Promise<Cms<Root>> {
-    return new Cms(await loader.load(rootFolder));
+    const node = createFolderNode(rootFolder);
+    return new Cms(await loader.load(node));
   }
 };

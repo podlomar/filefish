@@ -1,13 +1,10 @@
-export interface EntryBase {
-  readonly link: string;
-  readonly title: string;
-}
+import { FSysNode } from "./fsysnodes.js";
 
 export abstract class Entry<ContentType> {
-  public readonly base: EntryBase;
+  public readonly fsNode: FSysNode;
 
-  constructor(base: EntryBase) {
-    this.base = base;
+  constructor(fsNode: FSysNode) {
+    this.fsNode = fsNode;
   }
 
   public find<T extends Entry<any>>(entryPath: string, type: Class<T>): T | null {
@@ -43,8 +40,8 @@ export abstract class Entry<ContentType> {
 }
 
 export abstract class LeafEntry<ContentType> extends Entry<ContentType> {
-  constructor(base: EntryBase) {
-    super(base);
+  constructor(fsNode: FSysNode) {
+    super(fsNode);
   }
 
   public findChild(link: string): null {
@@ -61,8 +58,8 @@ export abstract class LeafEntry<ContentType> extends Entry<ContentType> {
 export abstract class ParentEntry<ContentType, C extends Entry<any>> extends Entry<ContentType> {
   protected subEntries: C[];
 
-  constructor(base: EntryBase) {
-    super(base);
+  constructor(fsNode: FSysNode) {
+    super(fsNode);
     this.subEntries = [];
   }
 
@@ -71,7 +68,7 @@ export abstract class ParentEntry<ContentType, C extends Entry<any>> extends Ent
   }
 
   public findChild(link: string): Entry<any> | null {
-    return this.subEntries.find((entry) => entry.base.link === link) ?? null;
+    return this.subEntries.find((entry) => entry.fsNode.name === link) ?? null;
   }
 
   public findChildOfType<T extends Entry<any>>(link: string, type: Class<T>): T | null {
