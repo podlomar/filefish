@@ -1,15 +1,16 @@
+import { EntryBase } from '../entry.js';
 import { FileNode, FSysNode, FolderNode } from '../fsysnodes.js';
 import { FolderLoader, TextFileLoader } from '../loader.js';
 import { PlainFolderEntry, PlainTextEntry } from './entries.js';
 
 export class PlainTextFileLoader extends TextFileLoader<PlainTextEntry> {  
-  protected async loadEntry(node: FileNode): Promise<PlainTextEntry> {
-    return new PlainTextEntry(node);
+  protected async loadEntry(base: EntryBase): Promise<PlainTextEntry> {
+    return new PlainTextEntry(base);
   }
 }
 
 export abstract class PlainFolderLoader extends FolderLoader<PlainFolderEntry> {
-  protected async loadEntry(node: FolderNode, subNodes: FSysNode[]): Promise<PlainFolderEntry> {
+  protected async loadEntry(base: EntryBase, subNodes: FSysNode[]): Promise<PlainFolderEntry> {
     const plainTextFileLoader = new PlainTextFileLoader();
     const subEntries = await Promise.all(
       subNodes.map((subNode) => subNode.type === 'file'
@@ -18,7 +19,7 @@ export abstract class PlainFolderLoader extends FolderLoader<PlainFolderEntry> {
       )
     );
 
-    const entry = new PlainFolderEntry(node);
+    const entry = new PlainFolderEntry(base);
     entry.pushEntries(...subEntries);
 
     return entry;

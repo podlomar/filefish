@@ -2,7 +2,7 @@ import { promises as fs, existsSync } from 'fs';
 import path from 'path';
 import yaml from 'yaml';
 import { FileNode, FolderNode, FSysNode } from './fsysnodes.js';
-import { Entry } from "./entry";
+import { Entry, EntryBase } from "./entry";
 
 
 export interface EntryLoader<E extends Entry<any>> {
@@ -21,10 +21,10 @@ export interface EntryIndex {
 }
 
 export abstract class TextFileLoader<E extends Entry<any>> implements EntryLoader<E> {  
-  protected abstract loadEntry(node: FileNode): Promise<E>;
+  protected abstract loadEntry(base: EntryBase): Promise<E>;
 
   public async load(node: FileNode): Promise<E> {
-    return this.loadEntry(node);
+    return this.loadEntry({ fsNode: node, title: node.name });
   }
 }
 
@@ -46,7 +46,6 @@ const listAllFiles = async (folderPath: string): Promise<FSysNode[]> => {
         type: 'folder',
         fsPath: path.join(folderPath, file.name),
         name: file.name,
-        title: file.name,
       }
     }
       
@@ -55,34 +54,30 @@ const listAllFiles = async (folderPath: string): Promise<FSysNode[]> => {
       type: 'file',
       fsPath: folderPath,
       name: parsed.name,
-      title: parsed.name,
       extension: parsed.ext,
     }
   }));
 };
 
 export abstract class FolderLoader<E extends Entry<any>> implements EntryLoader<E> {
-  protected abstract loadEntry(node: FolderNode, subNodes: FSysNode[]): Promise<E>;
+  protected abstract loadEntry(base: EntryBase, subNodes: FSysNode[]): Promise<E>;
 
   public async load(node: FolderNode): Promise<E> {
     const entryIndexPath = path.join(node.fsPath, '_entry.yml');
     const entryIndex: EntryIndex | null = existsSync(entryIndexPath) 
       ? yaml.parse(await fs.readFile(entryIndexPath, 'utf-8'))
       : null;
-
-    console.log('index', entryIndex);
-    
-    const updateNode = {
-      ...node,
-      title: entryIndex?.title ?? node.title,
-    }
     
     const subNodes = entryIndex === null
       ? await listAllFiles(node.fsPath)
       : listSubentryFiles(node.fsPath, entryIndex.subentries);
 
-    console.log('subnodes', subNodes);
-
-    return this.loadEntry(updateNode, subNodes);
+    return this.loadEntry(
+      { 
+        fsNode: node, 
+        title: entryIndex?.title ?? node.name,
+      },
+      subNodes
+    );
   }
 }
