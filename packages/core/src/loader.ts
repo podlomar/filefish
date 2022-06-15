@@ -52,7 +52,7 @@ const listAllFiles = async (folderPath: string): Promise<FSysNode[]> => {
     const parsed = path.parse(file.name);
     return {
       type: 'file',
-      fsPath: folderPath,
+      fsPath: path.join(folderPath, file.name),
       name: parsed.name,
       extension: parsed.ext,
     }
