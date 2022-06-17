@@ -1,5 +1,8 @@
 title: Pokus
 subentries:
-  ext: "txt"
-  links:
-    - sample01
+  files:
+    extension: "txt"
+  include:
+    - link: sample01
+      extra:
+        div: czechitas
