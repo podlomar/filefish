@@ -38,10 +38,11 @@ export abstract class TextFileLoader<E extends Entry<any>> implements EntryLoade
 }
 
 const listSubentryFiles = async (
-  folderPath: string, subentries: Subentries
+  folderPath: string, parentPath: string, subentries: Subentries
 ): Promise<FSysNode[]> => Promise.all(
   subentries.include.map(async (def): Promise<FSysNode> => {
     const common = {
+      contentPath: path.join(parentPath, `${def.link}`),
       name: def.link,
       title: def.title ?? def.link,
       extra: def.extra,
@@ -70,7 +71,7 @@ const listSubentryFiles = async (
     };
   }));
 
-const listAllFiles = async (folderPath: string): Promise<FSysNode[]> => {
+const listAllFiles = async (folderPath: string, parentPath: string): Promise<FSysNode[]> => {
   const fileList = await fs.readdir(folderPath, { withFileTypes: true });
   return Promise.all(fileList.map((file): FSysNode => {
     const fsPath = path.join(folderPath, file.name);
@@ -78,6 +79,7 @@ const listAllFiles = async (folderPath: string): Promise<FSysNode[]> => {
     if (file.isDirectory()) {
       return {
         type: 'folder',
+        contentPath: path.join(parentPath, file.name),
         fsPath,
         name: file.name,
         title: file.name,
@@ -87,6 +89,7 @@ const listAllFiles = async (folderPath: string): Promise<FSysNode[]> => {
     const parsed = path.parse(file.name);
     return {
       type: 'file',
+      contentPath: path.join(parentPath, parsed.name),
       fsPath,
       name: parsed.name,
       title: parsed.name,
@@ -105,8 +108,8 @@ export abstract class FolderLoader<E extends Entry<any>> implements EntryLoader<
       : null;
     
     const subNodes = entryIndex === null
-      ? await listAllFiles(node.fsPath)
-      : await listSubentryFiles(node.fsPath, entryIndex.subentries);
+      ? await listAllFiles(node.fsPath, node.contentPath)
+      : await listSubentryFiles(node.fsPath, node.contentPath, entryIndex.subentries, );
 
     const extra = node.extra === undefined 
       ? entryIndex?.extra === undefined 
