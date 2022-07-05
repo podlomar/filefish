@@ -67,9 +67,9 @@ export abstract class LeafEntry<ContentType> extends Entry<ContentType> {
 export abstract class ParentEntry<ContentType, C extends Entry<any>> extends Entry<ContentType> {
   protected subEntries: C[];
 
-  constructor(base: EntryBase) {
+  public constructor(base: EntryBase, subEntries: C[]) {
     super(base);
-    this.subEntries = [];
+    this.subEntries = [...subEntries];
   }
 
   public pushEntries(...entries: C[]) {

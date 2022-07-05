@@ -40,8 +40,8 @@ export class PlainFolderEntry
   extends ParentEntry<PlainFolder, PlainFolderEntry | PlainTextEntry>
   implements RefableEntry<FolderItem> {
 
-  public constructor(base: EntryBase) {
-    super(base);
+  public constructor(base: EntryBase, subEntries?: (PlainFolderEntry | PlainTextEntry)[]) {
+    super(base, subEntries ?? []);
   }
 
   public getContentRef(): FolderItem {
