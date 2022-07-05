@@ -13,6 +13,6 @@ export class Cms<Root extends Entry<any>> {
     loader: EntryLoader<Root>, rootFolder: string,
   ): Promise<Cms<Root>> {
     const node = createFolderNode(rootFolder);
-    return new Cms(await loader.load(node));
+    return new Cms(await loader.loadOne(node));
   }
 };

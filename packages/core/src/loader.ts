@@ -4,8 +4,14 @@ import yaml from 'yaml';
 import { Extra, FileNode, FolderNode, FSysNode } from './fsysnodes.js';
 import { Entry, EntryBase } from "./entry";
 
-export interface EntryLoader<E extends Entry<any>> {
-  load(fsNode: FSysNode): Promise<E>;
+export abstract class EntryLoader<E extends Entry<any>> {
+  public constructor() {}
+
+  public abstract loadOne(fsNode: FSysNode): Promise<E>;
+  
+  public async loadMany(fsNodes: FSysNode[]): Promise<E[]> {
+    return Promise.all(fsNodes.map((fsNode) => this.loadOne(fsNode)));
+  }
 }
 
 export interface EntryDefinition {
@@ -29,10 +35,10 @@ export interface EntryIndex extends EntryDefinition {
   subentries: Subentries,
 }
 
-export abstract class TextFileLoader<E extends Entry<any>> implements EntryLoader<E> {  
+export abstract class TextFileLoader<E extends Entry<any>> extends EntryLoader<E> {  
   protected abstract loadEntry(base: EntryBase, extra?: Extra): Promise<E>;
 
-  public async load(node: FileNode): Promise<E> {
+  public async loadOne(node: FileNode): Promise<E> {
     return this.loadEntry({ fsNode: node, title: node.title }, node.extra);
   }
 }
@@ -98,10 +104,10 @@ const listAllFiles = async (folderPath: string, parentPath: string): Promise<FSy
   }));
 };
 
-export abstract class FolderLoader<E extends Entry<any>> implements EntryLoader<E> {
+export abstract class FolderLoader<E extends Entry<any>> extends EntryLoader<E> {
   protected abstract loadEntry(base: EntryBase, subNodes: FSysNode[], extra?: Extra): Promise<E>;
 
-  public async load(node: FolderNode): Promise<E> {
+  public async loadOne(node: FolderNode): Promise<E> {
     const entryIndexPath = path.join(node.fsPath, '_entry.yml');
     const entryIndex: EntryIndex | null = existsSync(entryIndexPath) 
       ? yaml.parse(await fs.readFile(entryIndexPath, 'utf-8'))

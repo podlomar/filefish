@@ -14,8 +14,8 @@ export abstract class PlainFolderLoader extends FolderLoader<PlainFolderEntry> {
     const plainTextFileLoader = new PlainTextFileLoader();
     const subEntries = await Promise.all(
       subNodes.map((subNode) => subNode.type === 'file'
-        ? plainTextFileLoader.load(subNode)
-        : this.load(subNode)
+        ? plainTextFileLoader.loadOne(subNode)
+        : this.loadOne(subNode)
       )
     );
 
