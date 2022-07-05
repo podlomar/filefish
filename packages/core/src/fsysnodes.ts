@@ -1,8 +1,12 @@
 import path from 'path';
 
+export type Extra = { [Key: string]: unknown };
+
 export interface BaseFSysNode {
   readonly fsPath: string;
   readonly name: string;
+  readonly title: string,
+  readonly extra?: Extra,
 }
 
 export interface FileNode extends BaseFSysNode {
@@ -22,5 +26,6 @@ export const createFolderNode = (folderPath: string): FolderNode => {
     type: 'folder',
     fsPath: folderPath,
     name: parsed.name,
+    title: parsed.name,
   };
 };

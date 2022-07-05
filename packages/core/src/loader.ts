@@ -1,17 +1,20 @@
 import { promises as fs, existsSync } from 'fs';
 import path from 'path';
 import yaml from 'yaml';
-import { FileNode, FolderNode, FSysNode } from './fsysnodes.js';
+import { Extra, FileNode, FolderNode, FSysNode } from './fsysnodes.js';
 import { Entry, EntryBase } from "./entry";
-
 
 export interface EntryLoader<E extends Entry<any>> {
   load(fsNode: FSysNode): Promise<E>;
 }
 
-export interface SubentryItem {
+export interface EntryDefinition {
+  title?: string;
+  extra?: Extra;
+}
+
+export interface SubentryDefinition extends EntryDefinition {
   link: string,
-  extra: unknown,
 }
 
 export type Subentries = {
@@ -19,36 +22,40 @@ export type Subentries = {
     extension: string,
   },
   folders: boolean,
-  include: SubentryItem[],
+  include: SubentryDefinition[],
 }
 
-export interface EntryIndex {
-  title?: string,
-  extra?: any,
+export interface EntryIndex extends EntryDefinition {
   subentries: Subentries,
 }
 
 export abstract class TextFileLoader<E extends Entry<any>> implements EntryLoader<E> {  
-  protected abstract loadEntry(base: EntryBase): Promise<E>;
+  protected abstract loadEntry(base: EntryBase, extra?: Extra): Promise<E>;
 
   public async load(node: FileNode): Promise<E> {
-    return this.loadEntry({ fsNode: node, title: node.name });
+    return this.loadEntry({ fsNode: node, title: node.title }, node.extra);
   }
 }
 
 const listSubentryFiles = async (
   folderPath: string, subentries: Subentries
 ): Promise<FSysNode[]> => Promise.all(
-  subentries.include.map(async (item): Promise<FSysNode> => {
+  subentries.include.map(async (def): Promise<FSysNode> => {
+    const common = {
+      name: def.link,
+      title: def.title ?? def.link,
+      extra: def.extra,
+    };
+    
     if (subentries.folders) {
-      const fsPath = path.join(folderPath, `${item.link}`);
+      const fsPath = path.join(folderPath, `${def.link}`);
       try {
         const stat = await fs.stat(fsPath);
         if (stat.isDirectory()) {
           return {
             type: 'folder',
             fsPath,
-            name: item.link,
+            ...common,
           }
         }
       } catch(e) {}
@@ -57,35 +64,39 @@ const listSubentryFiles = async (
     const extension = subentries.files.extension;
     return {
       type: 'file',
-      fsPath: path.join(folderPath, `${item.link}.${extension}`),
-      name: item.link,
+      fsPath: path.join(folderPath, `${def.link}.${extension}`),
       extension,
+      ...common,
     };
   }));
 
 const listAllFiles = async (folderPath: string): Promise<FSysNode[]> => {
   const fileList = await fs.readdir(folderPath, { withFileTypes: true });
   return Promise.all(fileList.map((file): FSysNode => {
+    const fsPath = path.join(folderPath, file.name);
+
     if (file.isDirectory()) {
       return {
         type: 'folder',
-        fsPath: path.join(folderPath, file.name),
+        fsPath,
         name: file.name,
-      }
+        title: file.name,
+      };
     }
       
     const parsed = path.parse(file.name);
     return {
       type: 'file',
-      fsPath: path.join(folderPath, file.name),
+      fsPath,
       name: parsed.name,
+      title: parsed.name,
       extension: parsed.ext,
-    }
+    };
   }));
 };
 
 export abstract class FolderLoader<E extends Entry<any>> implements EntryLoader<E> {
-  protected abstract loadEntry(base: EntryBase, subNodes: FSysNode[]): Promise<E>;
+  protected abstract loadEntry(base: EntryBase, subNodes: FSysNode[], extra?: Extra): Promise<E>;
 
   public async load(node: FolderNode): Promise<E> {
     const entryIndexPath = path.join(node.fsPath, '_entry.yml');
@@ -97,12 +108,19 @@ export abstract class FolderLoader<E extends Entry<any>> implements EntryLoader<
       ? await listAllFiles(node.fsPath)
       : await listSubentryFiles(node.fsPath, entryIndex.subentries);
 
+    const extra = node.extra === undefined 
+      ? entryIndex?.extra === undefined 
+        ? undefined
+        : entryIndex.extra
+      : {...node.extra, ...entryIndex?.extra };
+
     return this.loadEntry(
       { 
         fsNode: node, 
-        title: entryIndex?.title ?? node.name,
+        title: entryIndex?.title ?? node.title,
       },
-      subNodes
+      subNodes,
+      extra,
     );
   }
 }

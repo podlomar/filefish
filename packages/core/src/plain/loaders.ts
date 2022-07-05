@@ -1,5 +1,5 @@
 import { EntryBase } from '../entry.js';
-import { FileNode, FSysNode, FolderNode } from '../fsysnodes.js';
+import { FSysNode } from '../fsysnodes.js';
 import { FolderLoader, TextFileLoader } from '../loader.js';
 import { PlainFolderEntry, PlainTextEntry } from './entries.js';
 

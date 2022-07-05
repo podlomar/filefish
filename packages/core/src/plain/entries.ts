@@ -1,8 +1,12 @@
 import { promises as fs } from 'fs';
 import { EntryBase, LeafEntry, ParentEntry, RefableEntry } from "../entry.js";
-import { PlainTextFile, PlainFolder, FolderItem } from './content.js';
+import { Extra } from '../fsysnodes.js';
+import { PlainFolder, FolderItem } from './content.js';
 
-export class PlainTextEntry extends LeafEntry<PlainTextFile> implements RefableEntry<FolderItem> {
+export abstract class TextFileEntry<ContentType>
+  extends LeafEntry<ContentType> 
+  implements RefableEntry<FolderItem> {
+  
   public constructor(base: EntryBase) {
     super(base);
   }
@@ -14,9 +18,21 @@ export class PlainTextEntry extends LeafEntry<PlainTextFile> implements RefableE
     }
   }
 
-  public async fetch(): Promise<PlainTextFile> {
-    const content = await fs.readFile(this.base.fsNode.fsPath, 'utf-8');
-    return { content };
+  public async fetch(): Promise<ContentType> {
+    const plainText = await fs.readFile(this.base.fsNode.fsPath, 'utf-8');
+    return this.processContent(plainText);
+  }
+
+  protected abstract processContent(plainText: string): Promise<ContentType>;
+};
+
+export class PlainTextEntry extends TextFileEntry<string> {
+  public constructor(base: EntryBase) {
+    super(base);
+  }
+
+  protected async processContent(plainText: string): Promise<string> {
+    return plainText;
   }
 };
 

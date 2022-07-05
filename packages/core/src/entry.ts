@@ -1,4 +1,4 @@
-import { FSysNode } from "./fsysnodes.js";
+import { Extra, FSysNode } from "./fsysnodes.js";
 
 export interface EntryBase {
   readonly fsNode: FSysNode,
