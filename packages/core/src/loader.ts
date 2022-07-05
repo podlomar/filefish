@@ -2,7 +2,7 @@ import { promises as fs, existsSync } from 'fs';
 import path from 'path';
 import yaml from 'yaml';
 import { Extra, FileNode, FolderNode, FSysNode } from './fsysnodes.js';
-import { Entry, EntryBase } from "./entry";
+import { createEntryBase, Entry, EntryBase } from "./entry.js";
 
 export abstract class EntryLoader<E extends Entry<any>> {
   public constructor() {}
@@ -39,7 +39,7 @@ export abstract class TextFileLoader<E extends Entry<any>> extends EntryLoader<E
   protected abstract loadEntry(base: EntryBase, extra?: Extra): Promise<E>;
 
   public async loadOne(node: FileNode): Promise<E> {
-    return this.loadEntry({ fsNode: node, title: node.title }, node.extra);
+    return this.loadEntry(createEntryBase(node), node.extra);
   }
 }
 
@@ -48,7 +48,7 @@ const listSubentryFiles = async (
 ): Promise<FSysNode[]> => Promise.all(
   subentries.include.map(async (def): Promise<FSysNode> => {
     const common = {
-      contentPath: path.join(parentPath, `${def.link}`),
+      contentPath: `${parentPath}/${def.link}`,
       name: def.link,
       title: def.title ?? def.link,
       extra: def.extra,
@@ -85,7 +85,7 @@ const listAllFiles = async (folderPath: string, parentPath: string): Promise<FSy
     if (file.isDirectory()) {
       return {
         type: 'folder',
-        contentPath: path.join(parentPath, file.name),
+        contentPath: `${parentPath}/${file.name}`,
         fsPath,
         name: file.name,
         title: file.name,
@@ -95,7 +95,7 @@ const listAllFiles = async (folderPath: string, parentPath: string): Promise<FSy
     const parsed = path.parse(file.name);
     return {
       type: 'file',
-      contentPath: path.join(parentPath, parsed.name),
+      contentPath: `${parentPath}/${parsed.name}`,
       fsPath,
       name: parsed.name,
       title: parsed.name,
@@ -124,10 +124,7 @@ export abstract class FolderLoader<E extends Entry<any>> extends EntryLoader<E> 
       : {...node.extra, ...entryIndex?.extra };
 
     return this.loadEntry(
-      { 
-        fsNode: node, 
-        title: entryIndex?.title ?? node.title,
-      },
+      createEntryBase(node, entryIndex?.title),
       subNodes,
       extra,
     );

@@ -1,9 +1,19 @@
+import path from "path";
 import { Extra, FSysNode } from "./fsysnodes.js";
 
 export interface EntryBase {
-  readonly fsNode: FSysNode,
+  readonly contentPath: string;
+  readonly fsPath: string;
+  readonly link: string;
   readonly title: string;
 }
+
+export const createEntryBase = (node: FSysNode, title?: string): EntryBase => ({
+  contentPath: node.contentPath,
+  fsPath: node.fsPath,
+  link: node.name,
+  title: title ?? node.title,
+});
 
 export abstract class Entry<ContentType> {
   public readonly base: EntryBase;
@@ -13,7 +23,7 @@ export abstract class Entry<ContentType> {
   }
 
   public get link() {
-    return this.base.fsNode.name;
+    return this.base.link;
   }
 
   public find<T extends Entry<any>>(entryPath: string, type: Class<T>): T | null {

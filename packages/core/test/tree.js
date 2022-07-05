@@ -1,36 +1,21 @@
 import { PlainFolderEntry, PlainTextEntry } from "../dist/plain/entries.js";
 
 export const rootEntry = new PlainFolderEntry({
-  fsNode: {
-    type: 'folder',
-    contentPath: '/',
-    fsPath: 'test/content',
-    name: 'content',
-    title: 'content'
-  },
+  contentPath: '',
+  fsPath: 'test/content',
+  link: 'content',
   title: 'The World'
 }, [
   new PlainFolderEntry({
-    fsNode: {
-      type: 'folder',
-      fsPath: 'test/content/europe',
-      contentPath: '/europe',
-      name: 'europe',
-      title: 'europe',
-      extra: undefined,
-    },
+    contentPath: '/europe',  
+    fsPath: 'test/content/europe',
+    link: 'europe',
     title: 'The Continent of Europe',
   }, [
     new PlainTextEntry({
-      fsNode: {
-        type: 'file',
-        fsPath: 'test/content/europe/czechia.txt',
-        extension: 'txt',
-        contentPath: '/europe/czechia',
-        name: 'czechia',
-        title: 'czechia',
-        extra: undefined,
-      },
+      contentPath: '/europe/czechia',  
+      fsPath: 'test/content/europe/czechia.txt',
+      link: 'czechia',
       title: 'czechia',
     })
   ]),

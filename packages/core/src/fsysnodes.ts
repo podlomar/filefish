@@ -21,7 +21,7 @@ export interface FolderNode extends BaseFSysNode {
 
 export type FSysNode = FileNode | FolderNode;
 
-export const createFolderNode = (folderPath: string, contentPath: string = '/'): FolderNode => {
+export const createFolderNode = (folderPath: string, contentPath: string = ''): FolderNode => {
   const parsed = path.parse(folderPath);
   return {
     type: 'folder',

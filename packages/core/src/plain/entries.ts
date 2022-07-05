@@ -1,6 +1,5 @@
 import { promises as fs } from 'fs';
 import { EntryBase, LeafEntry, ParentEntry, RefableEntry } from "../entry.js";
-import { Extra } from '../fsysnodes.js';
 import { PlainFolder, FolderItem } from './content.js';
 
 export abstract class TextFileEntry<ContentType>
@@ -19,7 +18,7 @@ export abstract class TextFileEntry<ContentType>
   }
 
   public async fetch(): Promise<ContentType> {
-    const plainText = await fs.readFile(this.base.fsNode.fsPath, 'utf-8');
+    const plainText = await fs.readFile(this.base.fsPath, 'utf-8');
     return this.processContent(plainText);
   }
 
