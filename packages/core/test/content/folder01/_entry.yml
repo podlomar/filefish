@@ -1,8 +1,0 @@
-title: Pokus
-subentries:
-  files:
-    extension: "txt"
-  include:
-    - link: sample01
-      extra:
-        div: czechitas
