@@ -19,9 +19,6 @@ export abstract class PlainFolderLoader extends FolderLoader<PlainFolderEntry> {
       )
     );
 
-    const entry = new PlainFolderEntry(base);
-    entry.pushEntries(...subEntries);
-
-    return entry;
+    return new PlainFolderEntry(base, subEntries);
   };
 }

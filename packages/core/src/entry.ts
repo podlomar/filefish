@@ -1,4 +1,3 @@
-import path from "path";
 import { Extra, FSysNode } from "./fsysnodes.js";
 
 export interface EntryBase {
@@ -17,6 +16,7 @@ export const createEntryBase = (node: FSysNode, title?: string): EntryBase => ({
 
 export abstract class Entry<ContentType> {
   public readonly base: EntryBase;
+  private _parent: ParentEntry<any, this> | null = null;
 
   constructor(base: EntryBase) {
     this.base = base;
@@ -24,6 +24,14 @@ export abstract class Entry<ContentType> {
 
   public get link() {
     return this.base.link;
+  }
+
+  public get parent(): ParentEntry<any, this> | null {
+    return this._parent;
+  }
+
+  public set parent(parent: ParentEntry<any, this> | null) {
+    this._parent = parent;
   }
 
   public find<T extends Entry<any>>(entryPath: string, type: Class<T>): T | null {
@@ -75,15 +83,12 @@ export abstract class LeafEntry<ContentType> extends Entry<ContentType> {
 }
 
 export abstract class ParentEntry<ContentType, C extends Entry<any>> extends Entry<ContentType> {
-  protected subEntries: C[];
+  protected readonly subEntries: readonly C[];
 
   public constructor(base: EntryBase, subEntries: C[]) {
     super(base);
     this.subEntries = [...subEntries];
-  }
-
-  public pushEntries(...entries: C[]) {
-    this.subEntries.push(...entries);
+    this.subEntries.forEach((subEntry) => subEntry.parent = this);
   }
 
   public findChild(link: string): Entry<any> | null {

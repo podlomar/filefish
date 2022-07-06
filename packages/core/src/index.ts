@@ -10,9 +10,9 @@ export class Cms<Root extends Entry<any>> {
   }
 
   public static async load<Root extends Entry<any>>(
-    loader: EntryLoader<Root>, rootFolder: string,
+    loader: EntryLoader<Root>, rootFolder: string, rootPath: string = ''
   ): Promise<Cms<Root>> {
-    const node = createFolderNode(rootFolder);
+    const node = createFolderNode(rootFolder, rootPath);
     return new Cms(await loader.loadOne(node));
   }
 };

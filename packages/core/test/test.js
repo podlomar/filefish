@@ -4,7 +4,7 @@ import { Cms } from '../dist/index.js';
 import { PlainTextEntry } from '../dist/plain/entries.js';
 import { PlainFolderLoader } from '../dist/plain/loaders.js';
 
-const cms = await Cms.load(new PlainFolderLoader(), './test/content');
+const cms = await Cms.load(new PlainFolderLoader(null), './test/content');
 // const entry = cms.rootEntry.find('/folder01/sample01', PlainTextEntry);
 // const textFile = await entry.fetch(); 
 
