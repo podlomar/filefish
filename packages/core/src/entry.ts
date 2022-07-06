@@ -34,6 +34,14 @@ export abstract class Entry<ContentType> {
     this._parent = parent;
   }
 
+  public getBasesPath(): EntryBase[] {
+    if (this.parent === null) {
+      return [this.base];
+    }
+
+    return [...this.parent.getBasesPath(), this.base];
+  }
+
   public find<T extends Entry<any>>(entryPath: string, type: Class<T>): T | null {
     const firstSlashIdx = entryPath.indexOf('/');
     const link = firstSlashIdx > -1 ? entryPath.slice(0, firstSlashIdx) : entryPath;
