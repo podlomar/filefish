@@ -1,6 +1,7 @@
 title: The Continent of Europe
 subentries:
-  files:
-    extension: "txt"
+  select:
+    files:
+      extension: "txt"
   include:
     - link: czechia

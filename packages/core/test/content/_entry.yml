@@ -1,5 +1,6 @@
 title: The World
 subentries:
-  folders: true
+  select:
+    folders: true
   include:
-    - link: europe
+    - europe

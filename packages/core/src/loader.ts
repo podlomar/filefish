@@ -23,12 +23,16 @@ export interface SubentryDefinition extends EntryDefinition {
   link: string,
 }
 
+export type SubentryLink = SubentryDefinition | string;
+
 export type Subentries = {
-  files: {
-    extension: string,
+  select: {
+    files: {
+      extension: string,
+    },
+    folders: boolean,
   },
-  folders: boolean,
-  include: SubentryDefinition[],
+  include: SubentryLink[],
 }
 
 export interface EntryIndex extends EntryDefinition {
@@ -47,15 +51,21 @@ const listSubentryFiles = async (
   folderPath: string, parentPath: string, subentries: Subentries
 ): Promise<FSysNode[]> => Promise.all(
   subentries.include.map(async (def): Promise<FSysNode> => {
-    const common = {
-      contentPath: `${parentPath}/${def.link}`,
-      name: def.link,
-      title: def.title ?? def.link,
-      extra: def.extra,
-    };
+    const common = typeof def === 'string'
+      ? {
+          contentPath: `${parentPath}/${def}`,
+          name: def,
+          title: def,
+        }
+      : {
+          contentPath: `${parentPath}/${def.link}`,
+          name: def.link,
+          title: def.title ?? def.link,
+          extra: def.extra,
+        };
     
-    if (subentries.folders) {
-      const fsPath = path.join(folderPath, `${def.link}`);
+    if (subentries.select.folders) {
+      const fsPath = path.join(folderPath, `${common.name}`);
       try {
         const stat = await fs.stat(fsPath);
         if (stat.isDirectory()) {
@@ -68,10 +78,10 @@ const listSubentryFiles = async (
       } catch(e) {}
     }
 
-    const extension = subentries.files.extension;
+    const extension = subentries.select.files.extension;
     return {
       type: 'file',
-      fsPath: path.join(folderPath, `${def.link}.${extension}`),
+      fsPath: path.join(folderPath, `${common.name}.${extension}`),
       extension,
       ...common,
     };

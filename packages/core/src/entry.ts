@@ -42,7 +42,7 @@ export abstract class Entry<ContentType> {
     return [...this.parent.getBasesPath(), this.base];
   }
 
-  public find<T extends Entry<any>>(entryPath: string, type: EntryClass<T>): T | null {
+  public find<T extends Entry<unknown>>(entryPath: string, type: EntryClass<T>): T | null {
     const firstSlashIdx = entryPath.indexOf('/');
     const link = firstSlashIdx > -1 ? entryPath.slice(0, firstSlashIdx) : entryPath;
     const subEntry = link === '' ? this : this.findChild(link);
@@ -70,7 +70,7 @@ export abstract class Entry<ContentType> {
   }
 
   public abstract findChild(link: string): Entry<any> | null;
-  public abstract findChildOfType<T extends Entry<any>>(link: string, type: EntryClass<T>): T | null;
+  public abstract findChildOfType(link: string, type: EntryClass<Entry<unknown>>): Entry<unknown> | null;
   public abstract fetch(): Promise<ContentType>;
 }
 
@@ -90,26 +90,32 @@ export abstract class LeafEntry<ContentType> extends Entry<ContentType> {
   public abstract fetch(): Promise<ContentType>;
 }
 
-export abstract class ParentEntry<ContentType, C extends Entry<any>> extends Entry<ContentType> {
-  protected readonly subEntries: readonly C[];
+type Content<E> = E extends Entry<infer C> ? C : never;
 
-  public constructor(base: EntryBase, subEntries: C[]) {
+export abstract class ParentEntry<ContentType, E extends Entry<any>> extends Entry<ContentType> {
+  protected readonly subEntries: readonly E[];
+
+  public constructor(base: EntryBase, subEntries: E[]) {
     super(base);
     this.subEntries = [...subEntries];
     this.subEntries.forEach((subEntry) => subEntry.parent = this);
   }
 
-  public findChild(link: string): Entry<any> | null {
+  public findChild(link: string): E | null {
     return this.subEntries.find((entry) => entry.link === link) ?? null;
   }
 
-  public findChildOfType<T extends Entry<any>>(link: string, type: EntryClass<T>): T | null {
+  public findChildOfType(link: string, type: EntryClass<E>): E | null {
     const subEntry = this.findChild(link);
     if (subEntry === null) {
       return null;
     }
 
     return subEntry instanceof type ? subEntry : null;
+  }
+
+  public async fetchChildren(): Promise<Content<E>[]> {
+    return Promise.all(this.subEntries.map((subEntry) => subEntry.fetch()));
   }
 
   // public getChildrenOFTypes<
