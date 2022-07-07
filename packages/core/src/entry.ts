@@ -42,7 +42,7 @@ export abstract class Entry<ContentType> {
     return [...this.parent.getBasesPath(), this.base];
   }
 
-  public find<T extends Entry<any>>(entryPath: string, type: Class<T>): T | null {
+  public find<T extends Entry<any>>(entryPath: string, type: EntryClass<T>): T | null {
     const firstSlashIdx = entryPath.indexOf('/');
     const link = firstSlashIdx > -1 ? entryPath.slice(0, firstSlashIdx) : entryPath;
     const subEntry = link === '' ? this : this.findChild(link);
@@ -70,7 +70,7 @@ export abstract class Entry<ContentType> {
   }
 
   public abstract findChild(link: string): Entry<any> | null;
-  public abstract findChildOfType<T extends Entry<any>>(link: string, type: Class<T>): T | null;
+  public abstract findChildOfType<T extends Entry<any>>(link: string, type: EntryClass<T>): T | null;
   public abstract fetch(): Promise<ContentType>;
 }
 
@@ -83,7 +83,7 @@ export abstract class LeafEntry<ContentType> extends Entry<ContentType> {
     return null;
   }
 
-  public findChildOfType<T extends Entry<any>>(link: string, type: Class<T>): null {
+  public findChildOfType<T extends Entry<any>>(link: string, type: EntryClass<T>): null {
     return null;
   }
 
@@ -103,7 +103,7 @@ export abstract class ParentEntry<ContentType, C extends Entry<any>> extends Ent
     return this.subEntries.find((entry) => entry.link === link) ?? null;
   }
 
-  public findChildOfType<T extends Entry<any>>(link: string, type: Class<T>): T | null {
+  public findChildOfType<T extends Entry<any>>(link: string, type: EntryClass<T>): T | null {
     const subEntry = this.findChild(link);
     if (subEntry === null) {
       return null;
@@ -129,4 +129,4 @@ export interface RefableEntry<R> {
   getContentRef(): R;
 }
 
-export type Class<T> = new (...args: any[]) => T;
+export type EntryClass<T extends Entry<any>> = new (...args: any[]) => T;

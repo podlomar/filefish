@@ -4,7 +4,7 @@ import { Cms } from '../dist/index.js';
 import { PlainFolderEntry, PlainTextEntry } from '../dist/plain/entries.js';
 import { PlainFolderLoader } from '../dist/plain/loaders.js';
 
-const cms = await Cms.load(new PlainFolderLoader(null), './test/content');
+const cms = await Cms.load(new PlainFolderLoader(null), './test/content', '/content');
 
 it('well formed entry tree', () => {
   assert.deepStrictEqual(cms.rootEntry, rootEntry);
@@ -12,9 +12,9 @@ it('well formed entry tree', () => {
 
 describe('find entries', () => {
   it('success find', () => {
-    assert.deepStrictEqual(cms.rootEntry.find('', PlainFolderEntry), rootEntry);
-    assert.deepStrictEqual(cms.rootEntry.find('/europe', PlainFolderEntry), europeEntry);
-    assert.deepStrictEqual(cms.rootEntry.find('/europe/czechia', PlainTextEntry), czechiaEntry);
+    assert.deepStrictEqual(cms.find('/content', PlainFolderEntry), rootEntry);
+    assert.deepStrictEqual(cms.find('/content/europe', PlainFolderEntry), europeEntry);
+    assert.deepStrictEqual(cms.find('/content/europe/czechia', PlainTextEntry), czechiaEntry);
   });
   it('wrong type', () => {
     assert.deepStrictEqual(cms.rootEntry.find('/europe', PlainTextEntry), null);
