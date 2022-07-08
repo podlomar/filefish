@@ -2,6 +2,7 @@ title: The Continent of Europe
 subentries:
   select:
     files:
-      extension: "txt"
+      extension: txt
   include:
     - link: czechia
+      title: Czech Republic

@@ -14,15 +14,33 @@ export const europeBase = {
   title: 'The Continent of Europe',
 }
 
+export const africaBase = {
+  contentPath: '/content/africa',  
+  fsPath: 'test/content/africa',
+  link: 'africa',
+  title: 'africa',
+}
+
 export const czechiaBase = {
   contentPath: '/content/europe/czechia',  
   fsPath: 'test/content/europe/czechia.txt',
   link: 'czechia',
-  title: 'czechia',
+  title: 'Czech Republic',
+}
+
+export const egyptBase = {
+  contentPath: '/content/africa/egypt',  
+  fsPath: 'test/content/africa/egypt.txt',
+  link: 'egypt',
+  title: 'egypt',
 }
 
 export const czechiaEntry = new PlainTextEntry(czechiaBase);
 
+export const egyptEntry = new PlainTextEntry(egyptBase);
+
 export const europeEntry = new PlainFolderEntry(europeBase, [czechiaEntry]);
 
-export const rootEntry = new PlainFolderEntry(rootBase, [europeEntry]);
+export const africaEntry = new PlainFolderEntry(africaBase, [egyptEntry]);
+
+export const rootEntry = new PlainFolderEntry(rootBase, [europeEntry, africaEntry]);

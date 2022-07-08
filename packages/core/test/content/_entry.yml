@@ -2,5 +2,7 @@ title: The World
 subentries:
   select:
     folders: true
+    files: false
   include:
     - europe
+    - africa

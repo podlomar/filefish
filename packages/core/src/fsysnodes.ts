@@ -12,7 +12,7 @@ export interface BaseFSysNode {
 
 export interface FileNode extends BaseFSysNode {
   readonly type: 'file';
-  readonly extension: string;
+  readonly extension: string | null;
 }
 
 export interface FolderNode extends BaseFSysNode {

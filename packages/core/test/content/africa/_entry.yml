@@ -1,0 +1,7 @@
+subentries:
+  select:
+    files:
+      extension: "txt"
+  include:
+    - egypt
+    - morocco
