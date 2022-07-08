@@ -78,6 +78,7 @@ export abstract class Entry<ContentType> {
     return null;
   }
 
+  public abstract computeTotalEntries(): number;
   public abstract findChild(link: string): Entry<any> | null;
   public abstract findChildOfType(link: string, type: EntryClass<Entry<unknown>>): Entry<unknown> | null;
   public abstract fetch(): Promise<ContentType>;
@@ -94,6 +95,10 @@ export abstract class LeafEntry<ContentType> extends Entry<ContentType> {
 
   public findChildOfType<T extends Entry<any>>(link: string, type: EntryClass<T>): null {
     return null;
+  }
+
+  public computeTotalEntries(): number {
+    return 0;
   }
 
   public abstract fetch(): Promise<ContentType>;
@@ -128,6 +133,12 @@ export abstract class ParentEntry<ContentType, E extends Entry<any>> extends Ent
 
   public async fetchChildren(): Promise<Content<E>[]> {
     return Promise.all(this.subEntries.map((subEntry) => subEntry.fetch()));
+  }
+
+  public computeTotalEntries(): number {
+    return this.subEntries.reduce(
+      (sum, subEntry) => sum + subEntry.computeTotalEntries() + 1, 0
+    );
   }
 
   // public getChildrenOFTypes<

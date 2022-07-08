@@ -2,6 +2,10 @@ import { createFolderNode } from './fsysnodes.js';
 import { EntryClass, Entry } from './entry.js';
 import { EntryLoader } from './loader.js';
 
+export interface CmsSummary {
+  totalEntries: number;
+}
+
 export class Cms<Root extends Entry<any>> {
   public readonly rootEntry: Root;
   public readonly rootPath: string;
@@ -23,5 +27,11 @@ export class Cms<Root extends Entry<any>> {
       return null;
     }
     return this.rootEntry.find(entryPath.slice(this.rootPath.length), type);
+  }
+
+  public computeSummary(): CmsSummary {
+    return {
+      totalEntries: this.rootEntry.computeTotalEntries() + 1,
+    };
   }
 };

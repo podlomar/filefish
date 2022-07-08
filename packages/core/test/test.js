@@ -10,6 +10,10 @@ it('well formed entry tree', () => {
   assert.deepStrictEqual(cms.rootEntry, rootEntry);
 });
 
+it('cms summary', () => {
+  assert.deepStrictEqual(cms.computeSummary(), { totalEntries: 5 });
+});
+
 describe('find entries', () => {
   it('success find', () => {
     assert.deepStrictEqual(cms.find('/content', PlainFolderEntry), rootEntry);
