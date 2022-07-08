@@ -1,15 +1,20 @@
 import { promises as fs, existsSync } from 'fs';
 import path from 'path';
 import yaml from 'yaml';
-import { Extra, FileNode, FolderNode, FSysNode } from './fsysnodes.js';
+import { Extra, FailedNode, FileNode, FolderNode, FSysNode, MaybeNode } from './fsysnodes.js';
 import { createEntryBase, Entry, EntryBase } from "./entry.js";
+import { problem } from './problems.js';
 
 export abstract class EntryLoader<E extends Entry<any>> {
   public constructor() {}
 
-  public abstract loadOne(fsNode: FSysNode): Promise<E>;
+  protected abstract loadEntry(base: EntryBase, extra?: Extra): Promise<E>;
+
+  public loadOne(fsNode: FSysNode): Promise<E> {
+    return this.loadEntry(createEntryBase(fsNode, null, []), fsNode.extra);
+  }
   
-  public async loadMany(fsNodes: FSysNode[]): Promise<E[]> {
+  public async loadMany(fsNodes: FSysNode[], problems: string[]): Promise<E[]> {
     return Promise.all(fsNodes.map((fsNode) => this.loadOne(fsNode)));
   }
 }
@@ -42,27 +47,19 @@ export interface EntryIndex extends EntryDefinition {
   subentries: Subentries,
 }
 
-export abstract class TextFileLoader<E extends Entry<any>> extends EntryLoader<E> {  
-  protected abstract loadEntry(base: EntryBase, extra?: Extra): Promise<E>;
-
-  public async loadOne(node: FileNode): Promise<E> {
-    return this.loadEntry(createEntryBase(node), node.extra);
-  }
-}
-
-const loadFSysNode = async (
+const resolveFSysNode = async (
   folderPath: string, parentPath: string, pointer: SubentryPointer, select?: SubentriesSelect
-): Promise<FSysNode | null> => {
+): Promise<MaybeNode> => {
   const common = typeof pointer === 'string'
     ? {
         contentPath: `${parentPath}/${pointer}`,
         name: pointer,
-        title: pointer,
+        title: null,
       }
     : {
         contentPath: `${parentPath}/${pointer.link}`,
         name: pointer.link,
-        title: pointer.title ?? pointer.link,
+        title: pointer.title ?? null,
         extra: pointer.extra,
       };
     
@@ -78,12 +75,18 @@ const loadFSysNode = async (
         }
       }
     } catch(e) {
-      return null;
+      return {
+        type: 'failed',
+        problems: [(e as Error).message],
+      };
     }
   }
 
   if (select?.files === false) {
-    return null;
+    return {
+      type: 'failed',
+      problems: [problem('no_directory', common.name)],
+    };
   }
 
   const extension = select?.files === undefined || select.files === true 
@@ -96,7 +99,10 @@ const loadFSysNode = async (
   
   const fsPath = path.resolve(folderPath, fileName);
   if(!existsSync(fsPath)) {
-    return null;
+    return {
+      type: 'failed',
+      problems: [problem('no_file', common.name)],
+    };
   }
 
   return {
@@ -109,25 +115,23 @@ const loadFSysNode = async (
 
 const resolveSubentries = async (
   folderPath: string, parentPath: string, subentries?: Subentries
-): Promise<FSysNode[]> => {
+): Promise<MaybeNode[] | string> => {
   if (subentries === undefined) {
-    return [];
+    return problem('no_subentries');
   }
   
   if (subentries.include === undefined) {
-    return [];
+    return problem('no_include');
   }
   
-  const nodes = await Promise.all(
+  return Promise.all(
     subentries.include.map(
-      (pointer) => loadFSysNode(folderPath, parentPath, pointer, subentries.select)
+      (pointer) => resolveFSysNode(folderPath, parentPath, pointer, subentries.select)
     )
   );
-  
-  return nodes.filter((node): node is FSysNode => node !== null);
 };
 
-const listAllFiles = async (folderPath: string, parentPath: string): Promise<FSysNode[]> => {
+const resolveFiles = async (folderPath: string, parentPath: string): Promise<FSysNode[]> => {
   const fileList = await fs.readdir(folderPath, { withFileTypes: true });
   return Promise.all(fileList.map((file): FSysNode => {
     const fsPath = path.resolve(folderPath, file.name);
@@ -155,28 +159,46 @@ const listAllFiles = async (folderPath: string, parentPath: string): Promise<FSy
 };
 
 export abstract class FolderLoader<E extends Entry<any>> extends EntryLoader<E> {
-  protected abstract loadEntry(base: EntryBase, subNodes: FSysNode[], extra?: Extra): Promise<E>;
+  protected abstract loadFolder(
+    base: EntryBase,
+    subNodes: FSysNode[],
+    extra?: Extra,
+  ): Promise<E>;
 
-  public async loadOne(node: FolderNode): Promise<E> {
-    const entryIndexPath = path.join(node.fsPath, '_entry.yml');
+  protected async loadEntry(base: EntryBase, extra?: Extra): Promise<E> {
+    const entryIndexPath = path.join(base.fsPath, '_entry.yml');
     const entryIndex: EntryIndex | null = existsSync(entryIndexPath) 
       ? yaml.parse(await fs.readFile(entryIndexPath, 'utf-8'))
       : null;
     
-    const subNodes = entryIndex === null
-      ? await listAllFiles(node.fsPath, node.contentPath)
-      : await resolveSubentries(node.fsPath, node.contentPath, entryIndex.subentries, );
+    const resolved = entryIndex === null
+      ? await resolveFiles(base.fsPath, base.contentPath)
+      : await resolveSubentries(base.fsPath, base.contentPath, entryIndex.subentries, );
 
-    const extra = node.extra === undefined 
+    const problems = typeof resolved === 'string'
+      ? [resolved]
+      : resolved
+        .filter((node): node is FailedNode => node.type === 'failed')
+        .flatMap((node) => node.problems);
+
+    const okNodes = typeof resolved === 'string'
+      ? []
+      : resolved.filter((node): node is FSysNode => node.type !== 'failed');
+
+    const extendedExtra = extra === undefined
       ? entryIndex?.extra === undefined 
         ? undefined
         : entryIndex.extra
-      : {...node.extra, ...entryIndex?.extra };
+      : {...extra, ...entryIndex?.extra };
 
-    return this.loadEntry(
-      createEntryBase(node, entryIndex?.title),
-      subNodes,
-      extra,
+    return this.loadFolder(
+      {
+        ...base,
+        problems: [...base.problems, ...problems],
+        title: entryIndex?.title ?? base.title,
+      },
+      okNodes,
+      extendedExtra,
     );
   }
 }

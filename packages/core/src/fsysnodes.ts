@@ -6,7 +6,7 @@ export interface BaseFSysNode {
   readonly contentPath: string;
   readonly fsPath: string;
   readonly name: string;
-  readonly title: string,
+  readonly title: string | null,
   readonly extra?: Extra,
 }
 
@@ -19,7 +19,14 @@ export interface FolderNode extends BaseFSysNode {
   readonly type: 'folder';
 }
 
+export interface FailedNode {
+  readonly type: 'failed';
+  readonly problems: string[];
+}
+
 export type FSysNode = FileNode | FolderNode;
+
+export type MaybeNode = FSysNode | FailedNode;
 
 export const createFolderNode = (folderPath: string, contentPath: string = ''): FolderNode => {
   const parsed = path.parse(folderPath);
@@ -28,6 +35,6 @@ export const createFolderNode = (folderPath: string, contentPath: string = ''): 
     contentPath,
     fsPath: path.resolve(folderPath, ''),
     name: parsed.name,
-    title: parsed.name,
+    title: null,
   };
 };

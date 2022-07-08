@@ -11,7 +11,15 @@ it('well formed entry tree', () => {
 });
 
 it('cms summary', () => {
-  assert.deepStrictEqual(cms.computeSummary(), { totalEntries: 5 });
+  assert.deepStrictEqual(
+    cms.collectSummary(), 
+    { 
+      totalEntries: 5,
+      problems: [
+        { message: "No file with name 'morocco'", path: '/content/africa' }
+      ]
+    }
+  );
 });
 
 describe('find entries', () => {

@@ -5,7 +5,8 @@ export const rootBase = {
   contentPath: '/content',
   fsPath: path.resolve('test', 'content'),
   link: 'content',
-  title: 'The World'
+  title: 'The World',
+  problems: [],
 };
 
 export const europeBase = {
@@ -13,13 +14,17 @@ export const europeBase = {
   fsPath: path.resolve('test', 'content', 'europe'),
   link: 'europe',
   title: 'The Continent of Europe',
+  problems: [],
 }
 
 export const africaBase = {
   contentPath: '/content/africa',  
   fsPath: path.resolve('test', 'content', 'africa'),
   link: 'africa',
-  title: 'africa',
+  title: null,
+  problems: [
+    "No file with name 'morocco'",
+  ],
 }
 
 export const czechiaBase = {
@@ -27,13 +32,15 @@ export const czechiaBase = {
   fsPath: path.resolve('test', 'content', 'europe', 'czechia.txt'),
   link: 'czechia',
   title: 'Czech Republic',
+  problems: [],
 }
 
 export const egyptBase = {
   contentPath: '/content/africa/egypt',  
   fsPath: path.resolve('test', 'content', 'africa', 'egypt.txt'),
   link: 'egypt',
-  title: 'egypt',
+  title: null,
+  problems: [],
 }
 
 export const czechiaEntry = new PlainTextEntry(czechiaBase);

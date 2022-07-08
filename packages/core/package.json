@@ -21,6 +21,8 @@
     "typescript": "^4.6.2"
   },
   "dependencies": {
+    "@types/voca": "^1.4.2",
+    "voca": "^1.4.0",
     "yaml": "^2.1.0"
   }
 }

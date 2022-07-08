@@ -4,15 +4,24 @@ export interface EntryBase {
   readonly contentPath: string;
   readonly fsPath: string;
   readonly link: string;
-  readonly title: string;
+  readonly title: string | null;
+  readonly problems: string[],
 }
 
-export const createEntryBase = (node: FSysNode, title?: string): EntryBase => ({
+export const createEntryBase = (
+  node: FSysNode, title: string | null, problems: string[],
+): EntryBase => ({
   contentPath: node.contentPath,
   fsPath: node.fsPath,
   link: node.name,
-  title: title ?? node.title,
+  title: node.title ?? title,
+  problems,
 });
+
+export interface EntryProblem {
+  message: string,
+  path: string,
+}
 
 export abstract class Entry<ContentType> {
   public readonly base: EntryBase;
@@ -41,6 +50,17 @@ export abstract class Entry<ContentType> {
 
   public set index(index: number) {
     this._index = index;
+  }
+
+  public get problems() {
+    return this.base.problems;
+  }
+
+  public collectPooblems(): EntryProblem[] {
+    return this.problems.map((problem) => ({
+      message: problem,
+      path: this.base.contentPath,
+    }));
   }
 
   public getBasesPath(): EntryBase[] {
@@ -116,6 +136,17 @@ export abstract class ParentEntry<ContentType, E extends Entry<any>> extends Ent
       subEntry.parent = this;
       subEntry.index = index
     });
+  }
+
+  public collectPooblems(): EntryProblem[] {
+    const thisProblems = this.problems.map((problem): EntryProblem => ({
+      message: problem,
+      path: this.base.contentPath,
+    }));
+
+    const subProblems = this.subEntries.flatMap((subEntry) => subEntry.collectPooblems());
+
+    return [...thisProblems, ...subProblems];
   }
 
   public findChild(link: string): E | null {
