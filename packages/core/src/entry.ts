@@ -17,7 +17,7 @@ export const createEntryBase = (node: FSysNode, title?: string): EntryBase => ({
 export abstract class Entry<ContentType> {
   public readonly base: EntryBase;
   private _parent: ParentEntry<any, this> | null = null;
-  private _index: number;
+  private _index: number = -1;
 
   constructor(base: EntryBase) {
     this.base = base;
