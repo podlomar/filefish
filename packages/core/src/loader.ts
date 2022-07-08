@@ -67,7 +67,7 @@ const loadFSysNode = async (
       };
     
   if (select?.folders === true) {
-    const fsPath = path.join(folderPath, `${common.name}`);
+    const fsPath = path.resolve(folderPath, `${common.name}`);
     try {
       const stat = await fs.stat(fsPath);
       if (stat.isDirectory()) {
@@ -93,7 +93,8 @@ const loadFSysNode = async (
   const fileName = extension === undefined
     ? common.name
     : `${common.name}.${extension}`;
-  const fsPath = path.join(folderPath, fileName);
+  
+  const fsPath = path.resolve(folderPath, fileName);
   if(!existsSync(fsPath)) {
     return null;
   }
@@ -106,7 +107,7 @@ const loadFSysNode = async (
   };
 }
 
-const listSubentryFiles = async (
+const resolveSubentries = async (
   folderPath: string, parentPath: string, subentries?: Subentries
 ): Promise<FSysNode[]> => {
   if (subentries === undefined) {
@@ -129,7 +130,7 @@ const listSubentryFiles = async (
 const listAllFiles = async (folderPath: string, parentPath: string): Promise<FSysNode[]> => {
   const fileList = await fs.readdir(folderPath, { withFileTypes: true });
   return Promise.all(fileList.map((file): FSysNode => {
-    const fsPath = path.join(folderPath, file.name);
+    const fsPath = path.resolve(folderPath, file.name);
 
     if (file.isDirectory()) {
       return {
@@ -164,7 +165,7 @@ export abstract class FolderLoader<E extends Entry<any>> extends EntryLoader<E> 
     
     const subNodes = entryIndex === null
       ? await listAllFiles(node.fsPath, node.contentPath)
-      : await listSubentryFiles(node.fsPath, node.contentPath, entryIndex.subentries, );
+      : await resolveSubentries(node.fsPath, node.contentPath, entryIndex.subentries, );
 
     const extra = node.extra === undefined 
       ? entryIndex?.extra === undefined 

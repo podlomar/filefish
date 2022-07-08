@@ -26,7 +26,7 @@ export const createFolderNode = (folderPath: string, contentPath: string = ''): 
   return {
     type: 'folder',
     contentPath,
-    fsPath: path.join(folderPath, ''), // path normalization
+    fsPath: path.resolve(folderPath, ''),
     name: parsed.name,
     title: parsed.name,
   };
