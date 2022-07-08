@@ -17,6 +17,7 @@ export const createEntryBase = (node: FSysNode, title?: string): EntryBase => ({
 export abstract class Entry<ContentType> {
   public readonly base: EntryBase;
   private _parent: ParentEntry<any, this> | null = null;
+  private _index: number;
 
   constructor(base: EntryBase) {
     this.base = base;
@@ -32,6 +33,14 @@ export abstract class Entry<ContentType> {
 
   public set parent(parent: ParentEntry<any, this> | null) {
     this._parent = parent;
+  }
+
+  public get index() {
+    return this._index;
+  }
+
+  public set index(index: number) {
+    this._index = index;
   }
 
   public getBasesPath(): EntryBase[] {
@@ -98,7 +107,10 @@ export abstract class ParentEntry<ContentType, E extends Entry<any>> extends Ent
   public constructor(base: EntryBase, subEntries: E[]) {
     super(base);
     this.subEntries = [...subEntries];
-    this.subEntries.forEach((subEntry) => subEntry.parent = this);
+    this.subEntries.forEach((subEntry, index) => {
+      subEntry.parent = this;
+      subEntry.index = index
+    });
   }
 
   public findChild(link: string): E | null {
