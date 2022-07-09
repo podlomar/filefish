@@ -14,7 +14,7 @@ export abstract class EntryLoader<E extends Entry<any>> {
     return this.loadEntry(createEntryBase(fsNode, null, []));
   }
   
-  public async loadMany(fsNodes: FSysNode[], problems: string[]): Promise<E[]> {
+  public async loadMany(fsNodes: FSysNode[]): Promise<E[]> {
     return Promise.all(fsNodes.map((fsNode) => this.loadOne(fsNode)));
   }
 }
