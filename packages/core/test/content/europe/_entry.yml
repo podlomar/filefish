@@ -1,8 +1,10 @@
 title: The Continent of Europe
 subentries:
   select:
-    files:
-      extension: txt
+    folders: true
+    files: false
   include:
     - link: czechia
-      title: Czech Republic
+      title: Czechia
+      extra:
+        population: 10.7 million (2020)

@@ -7,7 +7,7 @@ export interface BaseFSysNode {
   readonly fsPath: string;
   readonly name: string;
   readonly title: string | null,
-  readonly extra?: Extra,
+  readonly extra: Extra | null,
 }
 
 export interface FileNode extends BaseFSysNode {
@@ -36,5 +36,6 @@ export const createFolderNode = (folderPath: string, contentPath: string = ''): 
     fsPath: path.resolve(folderPath, ''),
     name: parsed.name,
     title: null,
+    extra: null,
   };
 };

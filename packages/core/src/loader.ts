@@ -8,10 +8,10 @@ import { problem } from './problems.js';
 export abstract class EntryLoader<E extends Entry<any>> {
   public constructor() {}
 
-  protected abstract loadEntry(base: EntryBase, extra?: Extra): Promise<E>;
+  protected abstract loadEntry(base: EntryBase): Promise<E>;
 
   public loadOne(fsNode: FSysNode): Promise<E> {
-    return this.loadEntry(createEntryBase(fsNode, null, []), fsNode.extra);
+    return this.loadEntry(createEntryBase(fsNode, null, []));
   }
   
   public async loadMany(fsNodes: FSysNode[], problems: string[]): Promise<E[]> {
@@ -55,12 +55,13 @@ const resolveFSysNode = async (
         contentPath: `${parentPath}/${pointer}`,
         name: pointer,
         title: null,
+        extra: null,
       }
     : {
         contentPath: `${parentPath}/${pointer.link}`,
         name: pointer.link,
         title: pointer.title ?? null,
-        extra: pointer.extra,
+        extra: pointer.extra ?? null,
       };
     
   if (select?.folders === true) {
@@ -143,6 +144,7 @@ const resolveFiles = async (folderPath: string, parentPath: string): Promise<FSy
         fsPath,
         name: file.name,
         title: file.name,
+        extra: null,
       };
     }
       
@@ -153,19 +155,16 @@ const resolveFiles = async (folderPath: string, parentPath: string): Promise<FSy
       fsPath,
       name: parsed.name,
       title: parsed.name,
+      extra: null,
       extension: parsed.ext,
     };
   }));
 };
 
 export abstract class FolderLoader<E extends Entry<any>> extends EntryLoader<E> {
-  protected abstract loadFolder(
-    base: EntryBase,
-    subNodes: FSysNode[],
-    extra?: Extra,
-  ): Promise<E>;
+  protected abstract loadFolder(base: EntryBase, subNodes: FSysNode[]): Promise<E>;
 
-  protected async loadEntry(base: EntryBase, extra?: Extra): Promise<E> {
+  protected async loadEntry(base: EntryBase): Promise<E> {
     const entryIndexPath = path.join(base.fsPath, '_entry.yml');
     const entryIndex: EntryIndex | null = existsSync(entryIndexPath) 
       ? yaml.parse(await fs.readFile(entryIndexPath, 'utf-8'))
@@ -185,20 +184,20 @@ export abstract class FolderLoader<E extends Entry<any>> extends EntryLoader<E> 
       ? []
       : resolved.filter((node): node is FSysNode => node.type !== 'failed');
 
-    const extendedExtra = extra === undefined
+    const extendedExtra = base.extra === null
       ? entryIndex?.extra === undefined 
-        ? undefined
+        ? null
         : entryIndex.extra
-      : {...extra, ...entryIndex?.extra };
+      : {...base.extra, ...entryIndex?.extra };
 
     return this.loadFolder(
       {
         ...base,
         problems: [...base.problems, ...problems],
         title: entryIndex?.title ?? base.title,
+        extra: extendedExtra,
       },
       okNodes,
-      extendedExtra,
     );
   }
 }

@@ -5,6 +5,7 @@ export interface EntryBase {
   readonly fsPath: string;
   readonly link: string;
   readonly title: string | null;
+  readonly extra: Extra | null,
   readonly problems: string[],
 }
 
@@ -15,6 +16,7 @@ export const createEntryBase = (
   fsPath: node.fsPath,
   link: node.name,
   title: node.title ?? title,
+  extra: node.extra,
   problems,
 });
 
@@ -34,6 +36,10 @@ export abstract class Entry<ContentType> {
 
   public get link() {
     return this.base.link;
+  }
+
+  public get extra() {
+    return this.base.extra;
   }
 
   public get parent(): ParentEntry<any, this> | null {

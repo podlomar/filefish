@@ -1,0 +1,9 @@
+title: The Czech Republic
+extra:
+  lead: The Czech Republic, also known as Czechia is a landlocked country in Central Europe.
+subentries:
+  select:
+    files:
+      extension: "txt"
+  include:
+    - prague

@@ -6,6 +6,7 @@ export const rootBase = {
   fsPath: path.resolve('test', 'content'),
   link: 'content',
   title: 'The World',
+  extra: null,
   problems: [],
 };
 
@@ -14,6 +15,7 @@ export const europeBase = {
   fsPath: path.resolve('test', 'content', 'europe'),
   link: 'europe',
   title: 'The Continent of Europe',
+  extra: null,
   problems: [],
 }
 
@@ -22,6 +24,7 @@ export const africaBase = {
   fsPath: path.resolve('test', 'content', 'africa'),
   link: 'africa',
   title: null,
+  extra: null,
   problems: [
     "No file with name 'morocco'",
   ],
@@ -29,9 +32,22 @@ export const africaBase = {
 
 export const czechiaBase = {
   contentPath: '/content/europe/czechia',  
-  fsPath: path.resolve('test', 'content', 'europe', 'czechia.txt'),
+  fsPath: path.resolve('test', 'content', 'europe', 'czechia'),
   link: 'czechia',
-  title: 'Czech Republic',
+  title: 'The Czech Republic',
+  extra: {
+    lead: 'The Czech Republic, also known as Czechia is a landlocked country in Central Europe.',
+    population: '10.7 million (2020)'
+  },
+  problems: [],
+}
+
+export const pragueBase = {
+  contentPath: '/content/europe/czechia/prague',  
+  fsPath: path.resolve('test', 'content', 'europe', 'czechia', 'prague.txt'),
+  link: 'prague',
+  title: null,
+  extra: null,
   problems: [],
 }
 
@@ -40,10 +56,13 @@ export const egyptBase = {
   fsPath: path.resolve('test', 'content', 'africa', 'egypt.txt'),
   link: 'egypt',
   title: null,
+  extra: null,
   problems: [],
 }
 
-export const czechiaEntry = new PlainTextEntry(czechiaBase);
+export const pragueEntry = new PlainTextEntry(pragueBase);
+
+export const czechiaEntry = new PlainFolderEntry(czechiaBase, [pragueEntry]);
 
 export const egyptEntry = new PlainTextEntry(egyptBase);
 
