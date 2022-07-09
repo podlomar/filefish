@@ -1,6 +1,10 @@
 import path from 'path';
 
-export type Extra = { [Key: string]: unknown };
+export type ExtraValue = number | boolean | string | null | ExtraValue[] | Extra;
+
+export type Extra = { 
+  [Key: string]: ExtraValue
+};
 
 export interface BaseFSysNode {
   readonly contentPath: string;
