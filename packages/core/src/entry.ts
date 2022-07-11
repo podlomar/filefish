@@ -178,15 +178,21 @@ export abstract class ParentEntry<ContentType, E extends Entry<any>> extends Ent
     );
   }
 
-  // public getChildrenOFTypes<
-  //   T extends Class<Entry<any>>[]
-  // >(...types: T): InstanceType<T[number]>[] {
-  //   return this.subEntries.filter(
-  //     (entry) => types.some(
-  //       (type) => entry instanceof type
-  //     )
-  //   ) as InstanceType<T[number]>[];
-  // }
+  public getPrevSibling(childIindex: number): E | null {
+    if (childIindex <= 0) {
+      return null;
+    }
+
+    return this.subEntries[childIindex - 1];
+  }
+
+  public getNextSibling(childIindex: number): E | null {
+    if (childIindex >= this.subEntries.length - 1) {
+      return null;
+    }
+
+    return this.subEntries[childIindex + 1];
+  }
 
   public abstract fetch(): Promise<ContentType>;
 }
