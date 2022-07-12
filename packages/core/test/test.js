@@ -1,5 +1,5 @@
 import assert from 'assert';
-import { czechiaBase, pragueEntry, czechiaEntry, europeBase, europeEntry, rootBase, rootEntry} from './tree.js';
+import { czechiaBase, pragueEntry, czechiaEntry, europeBase, europeEntry, rootBase, rootEntry, africaEntry} from './tree.js';
 import { Cms } from '../dist/index.js';
 import { PlainFolderEntry, PlainTextEntry } from '../dist/plain/entries.js';
 import { PlainFolderLoader } from '../dist/plain/loaders.js';
@@ -37,9 +37,16 @@ describe('find entries', () => {
   });
 });
 
-it('base path', () => {
+it('bases path', () => {
   assert.deepStrictEqual(
     cms.rootEntry.find('/europe/czechia', PlainFolderEntry).getBasesPath(),
     [rootBase, europeBase, czechiaBase],
   );
+});
+
+it('siblings', () => {
+  assert.deepStrictEqual(cms.rootEntry.getPrevSibling(0), null);
+  assert.deepStrictEqual(cms.rootEntry.getNextSibling(0), africaEntry);
+  assert.deepStrictEqual(cms.rootEntry.getPrevSibling(1), europeEntry);
+  assert.deepStrictEqual(cms.rootEntry.getNextSibling(1), null);
 });
