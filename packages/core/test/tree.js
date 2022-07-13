@@ -3,6 +3,7 @@ import { PlainFolderEntry, PlainTextEntry } from "../dist/plain/entries.js";
 
 export const rootBase = {
   contentPath: '/content',
+  fsType: 'folder',
   fsPath: path.resolve('test', 'content'),
   link: 'content',
   title: 'The World',
@@ -11,7 +12,8 @@ export const rootBase = {
 };
 
 export const europeBase = {
-  contentPath: '/content/europe',  
+  contentPath: '/content/europe',
+  fsType: 'folder',
   fsPath: path.resolve('test', 'content', 'europe'),
   link: 'europe',
   title: 'The Continent of Europe',
@@ -20,7 +22,8 @@ export const europeBase = {
 }
 
 export const africaBase = {
-  contentPath: '/content/africa',  
+  contentPath: '/content/africa',
+  fsType: 'folder',
   fsPath: path.resolve('test', 'content', 'africa'),
   link: 'africa',
   title: null,
@@ -31,7 +34,8 @@ export const africaBase = {
 }
 
 export const czechiaBase = {
-  contentPath: '/content/europe/czechia',  
+  contentPath: '/content/europe/czechia',
+  fsType: 'folder',
   fsPath: path.resolve('test', 'content', 'europe', 'czechia'),
   link: 'czechia',
   title: 'The Czech Republic',
@@ -43,7 +47,8 @@ export const czechiaBase = {
 }
 
 export const pragueBase = {
-  contentPath: '/content/europe/czechia/prague',  
+  contentPath: '/content/europe/czechia/prague',
+  fsType: 'file',
   fsPath: path.resolve('test', 'content', 'europe', 'czechia', 'prague.txt'),
   link: 'prague',
   title: null,
@@ -52,7 +57,8 @@ export const pragueBase = {
 }
 
 export const egyptBase = {
-  contentPath: '/content/africa/egypt',  
+  contentPath: '/content/africa/egypt',
+  fsType: 'file',
   fsPath: path.resolve('test', 'content', 'africa', 'egypt.txt'),
   link: 'egypt',
   title: null,

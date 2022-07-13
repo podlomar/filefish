@@ -3,6 +3,7 @@ import { Extra, FSysNode } from "./fsysnodes.js";
 export interface EntryBase {
   readonly contentPath: string;
   readonly fsPath: string;
+  readonly fsType: 'file' | 'folder';
   readonly link: string;
   readonly title: string | null;
   readonly extra: Extra | null,
@@ -13,6 +14,7 @@ export const createEntryBase = (
   node: FSysNode, title: string | null, problems: string[],
 ): EntryBase => ({
   contentPath: node.contentPath,
+  fsType: node.type,
   fsPath: node.fsPath,
   link: node.name,
   title: node.title ?? title,
