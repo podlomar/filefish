@@ -1,3 +1,4 @@
+import { AccessControl } from "./access-control.js";
 import { Extra, FSysNode } from "./fsysnodes.js";
 
 export interface EntryBase {
@@ -79,13 +80,21 @@ export abstract class Entry<ContentType> {
     return [...this.parent.getBasesPath(), this.base];
   }
 
-  public find<T extends Entry<unknown>>(entryPath: string, type: EntryClass<T>): T | null {
+  public find<T extends Entry<unknown>>(
+    entryPath: string,
+    type: EntryClass<T>,
+    access: AccessControl
+  ): T | 'not-found' | 'forbidden' {
     const firstSlashIdx = entryPath.indexOf('/');
     const link = firstSlashIdx > -1 ? entryPath.slice(0, firstSlashIdx) : entryPath;
     const subEntry = link === '' ? this : this.findChild(link);
-    
     if (subEntry === null) {
-      return null;
+      return 'not-found';
+    }
+
+    const childAccess = access.childAccess(subEntry);
+    if (!childAccess.check()) {
+      return 'forbidden';
     }
 
     if (firstSlashIdx > -1) {
@@ -94,21 +103,21 @@ export abstract class Entry<ContentType> {
         if (subEntry instanceof type) {
           return subEntry;
         }
-        return null;
+        return 'not-found';
       }
 
-      return subEntry.find(subPath, type);
+      return subEntry.find(subPath, type, childAccess);
     }
 
     if (subEntry instanceof type) {
       return subEntry;
     }
-    return null;
+
+    return 'not-found';
   }
 
   public abstract computeTotalEntries(): number;
   public abstract findChild(link: string): Entry<any> | null;
-  public abstract findChildOfType(link: string, type: EntryClass<Entry<unknown>>): Entry<unknown> | null;
   public abstract fetch(): Promise<ContentType>;
 }
 
@@ -118,10 +127,6 @@ export abstract class LeafEntry<ContentType> extends Entry<ContentType> {
   }
 
   public findChild(link: string): null {
-    return null;
-  }
-
-  public findChildOfType<T extends Entry<any>>(link: string, type: EntryClass<T>): null {
     return null;
   }
 
@@ -161,15 +166,6 @@ export abstract class ParentEntry<ContentType, E extends Entry<any>> extends Ent
     return this.subEntries.find((entry) => entry.link === link) ?? null;
   }
 
-  public findChildOfType(link: string, type: EntryClass<E>): E | null {
-    const subEntry = this.findChild(link);
-    if (subEntry === null) {
-      return null;
-    }
-
-    return subEntry instanceof type ? subEntry : null;
-  }
-
   public async fetchChildren(): Promise<Content<E>[]> {
     return Promise.all(this.subEntries.map((subEntry) => subEntry.fetch()));
   }
@@ -180,20 +176,32 @@ export abstract class ParentEntry<ContentType, E extends Entry<any>> extends Ent
     );
   }
 
-  public getPrevSibling(childIindex: number): E | null {
-    if (childIindex <= 0) {
+  public getPrevSibling(childIndex: number, access: AccessControl): E | null | 'forbidden' {
+    if (childIndex <= 0) {
       return null;
     }
 
-    return this.subEntries[childIindex - 1];
+    const entry = this.subEntries[childIndex - 1];
+    const childAccess = access.childAccess(entry);
+    if (childAccess.check()) {
+      return entry;
+    }
+    
+    return 'forbidden';
   }
 
-  public getNextSibling(childIindex: number): E | null {
-    if (childIindex >= this.subEntries.length - 1) {
+  public getNextSibling(childIndex: number, access: AccessControl): E | null | 'forbidden' {
+    if (childIndex >= this.subEntries.length - 1) {
       return null;
     }
 
-    return this.subEntries[childIindex + 1];
+    const entry = this.subEntries[childIndex + 1];
+    const childAccess = access.childAccess(entry);
+    if (childAccess.check()) {
+      return entry;
+    }
+    
+    return 'forbidden';
   }
 
   public abstract fetch(): Promise<ContentType>;

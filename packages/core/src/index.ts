@@ -1,6 +1,7 @@
 import { createFolderNode } from './fsysnodes.js';
 import { EntryClass, Entry, EntryProblem } from './entry.js';
 import { EntryLoader } from './loader.js';
+import { AccessControl } from './access-control.js';
 
 export interface CmsSummary {
   totalEntries: number;
@@ -23,11 +24,21 @@ export class Cms<Root extends Entry<any>> {
     return new Cms(await loader.loadOne(node), rootPath);
   }
 
-  public find<T extends Entry<any>>(entryPath: string, type: EntryClass<T>): T | null {
+  public find<T extends Entry<any>>(
+    entryPath: string,
+    type: EntryClass<T>,
+    access: AccessControl
+  ): T | 'not-found' | 'forbidden' {
     if (!entryPath.startsWith(this.rootPath)) {
-      return null;
+      return 'not-found';
     }
-    return this.rootEntry.find(entryPath.slice(this.rootPath.length), type);
+
+    const rootAccess = access.childAccess(this.rootEntry);
+    if (rootAccess.check()) {
+      return this.rootEntry.find(entryPath.slice(this.rootPath.length), type, rootAccess);
+    }
+
+    return 'forbidden';
   }
 
   public collectSummary(): CmsSummary {
