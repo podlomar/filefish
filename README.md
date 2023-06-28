@@ -1,2 +1,3 @@
 # filefish
-A filesystem-based headles CMS
+
+A filesystem indexing library for representing arbitrary data as files and directories.

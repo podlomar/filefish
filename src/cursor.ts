@@ -1,0 +1,160 @@
+import { IndexEntry, InnerEntry } from "./treeindex.js";
+
+interface PathItem {
+  entry: IndexEntry;
+  pos: number;
+}
+
+export interface Cursor {
+  isOk(): this is OkCursor;
+  entry(): IndexEntry | null;
+  children(): OkCursor[];
+  findChild(fn: (entry: IndexEntry) => boolean): Cursor;
+  path(): readonly PathItem[];
+  pos(): number | null;
+  contentPath(): string | null;
+  descend(path: string): Cursor;
+  parent(): Cursor;
+  root(): Cursor;
+  nthSibling(steps: number): Cursor;
+  nextSibling(): Cursor;
+  prevSibling(): Cursor;
+}
+
+const notFoundCursor: Cursor = {
+  isOk: (): false => false,
+  entry: (): null => null,
+  children: (): OkCursor[] => [],
+  findChild: (): Cursor => notFoundCursor,
+  path: () => [],
+  pos: (): null => null,
+  contentPath: () => null,
+  descend: (): Cursor => notFoundCursor,
+  parent: (): Cursor => notFoundCursor,
+  root: (): Cursor => notFoundCursor,
+  nthSibling: (): Cursor => notFoundCursor,
+  nextSibling: (): Cursor => notFoundCursor,
+  prevSibling: (): Cursor => notFoundCursor,
+};
+
+export class OkCursor implements Cursor {
+  private readonly treePath: readonly PathItem[];
+
+  public constructor(treePath: PathItem[]) {
+    this.treePath = treePath;
+  }
+
+  public isOk(): this is OkCursor {
+    return true;
+  }
+
+  public entry(): IndexEntry {
+    return this.treePath.at(-1)?.entry!;
+  }
+  
+  public children(): OkCursor[] {
+    const entry = this.entry();
+    if (entry.type !== 'inner') {
+      return [];
+    }
+
+    return entry.subEntries.map(
+      (subEntry, index) => new OkCursor([...this.treePath, { entry: subEntry, pos: index }])
+    );
+  }
+  
+  public findChild(fn: (entry: IndexEntry) => boolean): Cursor {
+    const entry = this.entry();
+    if (entry.type !== 'inner') {
+      return notFoundCursor;
+    }
+
+    const index = entry.subEntries.findIndex(fn);
+    if (index === -1) {
+      return notFoundCursor;
+    }
+
+    return new OkCursor([...this.treePath, { entry: entry.subEntries[index], pos: index }]);
+  }
+
+  public path(): readonly PathItem[] {
+    return this.treePath;
+  }
+
+  public pos(): number {
+    return this.treePath.at(-1)?.pos!;
+  }
+
+  public contentPath(): string {
+    return '/' + this.treePath.map((item) => item.entry.name).join('/');
+  }
+
+  public descend(path: string): Cursor {
+    const startEntry = this.entry();
+    
+    const segments = path.split('/');
+    const entryPath: PathItem[] = [];
+    let currentEntry = startEntry;
+    
+    for(const segment of segments) {
+      if (currentEntry.type !== 'inner') {
+        return notFoundCursor;
+      }
+        
+      const index = currentEntry.subEntries.findIndex((e) => e.name === segment);
+      if (index === -1) {
+        return notFoundCursor;
+      }
+      
+      currentEntry = currentEntry.subEntries[index];
+      entryPath.push({ entry: currentEntry, pos: index });
+    }
+
+    return new OkCursor([...this.treePath, ...entryPath]);
+  }
+
+  public parent(): Cursor {
+    const parentPath = this.treePath.slice(0, -1);
+    if (parentPath.length === 0) {
+      return notFoundCursor;
+    }
+
+    return new OkCursor(parentPath);
+  }
+
+  public root(): Cursor {
+    return new OkCursor([this.treePath[0]]);
+  }
+
+  public nthSibling(steps: number): Cursor {
+    const parentPath = this.treePath.slice(0, -1);
+    const parent = parentPath.at(-1)?.entry as InnerEntry | undefined;
+
+    if (parent === undefined) {
+      return notFoundCursor;
+    }
+
+    const index = parent.subEntries.indexOf(this.entry()) + steps;
+    const sibling = parent.subEntries.at(index);
+
+    if (sibling === undefined) {
+      return notFoundCursor;
+    }
+
+    return new OkCursor([
+      ...parentPath,
+      {
+        entry: sibling,
+        pos: index,
+      }
+    ]);
+  }
+
+  public nextSibling(): Cursor {
+    return this.nthSibling(1);
+  }
+
+  public prevSibling(): Cursor {
+    return this.nthSibling(-1);
+  }
+};

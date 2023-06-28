@@ -1,12 +1,13 @@
 {
-  "name": "@filefish/core",
-  "version": "0.0.0",
+  "name": "filefish",
+  "version": "0.1.0",
   "description": "",
   "main": "dist/index.js",
   "type": "module",
   "scripts": {
     "test": "mocha",
-    "dev": "tsc -w"
+    "dev": "tsc -w",
+    "build": "tsc"
   },
   "author": "Martin Podloucký",
   "files": [
@@ -15,13 +16,15 @@
   ],
   "license": "ISC",
   "devDependencies": {
-    "@types/node": "^17.0.21",
+    "@types/node": "^18.15.3",
+    "@types/voca": "^1.4.2",
     "@types/yaml": "^1.9.7",
     "mocha": "^10.0.0",
-    "typescript": "^4.6.2"
+    "typescript": "^5.0.2"
   },
   "dependencies": {
-    "@types/voca": "^1.4.2",
+    "fs-query": "file:../fs-query",
+    "monadix": "^0.1.3",
     "voca": "^1.4.0",
     "yaml": "^2.1.0"
   }
