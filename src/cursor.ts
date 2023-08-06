@@ -7,13 +7,14 @@ interface PathItem {
 
 export interface Cursor {
   isOk(): this is OkCursor;
+  asset(key: string): string | null;
   entry(): IndexEntry | null;
   children(): OkCursor[];
   findChild(fn: (entry: IndexEntry) => boolean): Cursor;
   path(): readonly PathItem[];
   pos(): number | null;
   contentPath(): string | null;
-  descend(path: string): Cursor;
+  descend(...segments: string[]): Cursor;
   parent(): Cursor;
   root(): Cursor;
   nthSibling(steps: number): Cursor;
@@ -23,6 +24,7 @@ export interface Cursor {
 
 const notFoundCursor: Cursor = {
   isOk: (): false => false,
+  asset: (): null => null,
   entry: (): null => null,
   children: (): OkCursor[] => [],
   findChild: (): Cursor => notFoundCursor,
@@ -52,6 +54,10 @@ export class OkCursor implements Cursor {
     return this.treePath.at(-1)?.entry!;
   }
   
+  public asset(key: string): string | null {
+    return this.entry().assets?.[key] ?? null;
+  }
+
   public children(): OkCursor[] {
     const entry = this.entry();
     if (entry.type !== 'inner') {
@@ -86,22 +92,23 @@ export class OkCursor implements Cursor {
   }
 
   public contentPath(): string {
-    return '/' + this.treePath.map((item) => item.entry.name).join('/');
+    // NOTE: The first entry is the root entry, which is not part of the content path.
+    return '/' + this.treePath.slice(1).map((item) => item.entry.name).join('/');
   }
 
-  public descend(path: string): Cursor {
+  public descend(...segments: string[]): Cursor {
     const startEntry = this.entry();
     
-    const segments = path.split('/');
+    const steps = segments.flatMap((segment) => segment.split('/'));
     const entryPath: PathItem[] = [];
     let currentEntry = startEntry;
     
-    for(const segment of segments) {
+    for(const step of steps) {
       if (currentEntry.type !== 'inner') {
         return notFoundCursor;
       }
         
-      const index = currentEntry.subEntries.findIndex((e) => e.name === segment);
+      const index = currentEntry.subEntries.findIndex((e) => e.name === step);
       if (index === -1) {
         return notFoundCursor;
       }

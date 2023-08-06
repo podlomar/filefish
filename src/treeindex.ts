@@ -11,6 +11,7 @@ export interface BaseEntry {
   readonly contentId: string;
   readonly name: string;
   readonly fsNode: FsNode;
+  readonly assets?: { [key: string]: string; };
   readonly log?: LogMessage[];
 }
 
