@@ -14,7 +14,7 @@ export interface Cursor {
   path(): readonly PathItem[];
   pos(): number | null;
   contentPath(): string | null;
-  descend(...segments: string[]): Cursor;
+  navigate(...segments: string[]): Cursor;
   parent(): Cursor;
   root(): Cursor;
   nthSibling(steps: number): Cursor;
@@ -31,7 +31,7 @@ const notFoundCursor: Cursor = {
   path: () => [],
   pos: (): null => null,
   contentPath: () => null,
-  descend: (): Cursor => notFoundCursor,
+  navigate: (): Cursor => notFoundCursor,
   parent: (): Cursor => notFoundCursor,
   root: (): Cursor => notFoundCursor,
   nthSibling: (): Cursor => notFoundCursor,
@@ -96,7 +96,7 @@ export class OkCursor implements Cursor {
     return '/' + this.treePath.slice(1).map((item) => item.entry.name).join('/');
   }
 
-  public descend(...segments: string[]): Cursor {
+  public navigate(...segments: string[]): Cursor {
     const startEntry = this.entry();
     
     const steps = segments.flatMap((segment) => segment.split('/'));
