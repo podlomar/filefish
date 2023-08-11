@@ -7,7 +7,6 @@ interface PathItem {
 
 export interface Cursor {
   isOk(): this is OkCursor;
-  asset(key: string): string | null;
   entry(): IndexEntry | null;
   children(): OkCursor[];
   findChild(fn: (entry: IndexEntry) => boolean): Cursor;
@@ -24,7 +23,6 @@ export interface Cursor {
 
 const notFoundCursor: Cursor = {
   isOk: (): false => false,
-  asset: (): null => null,
   entry: (): null => null,
   children: (): OkCursor[] => [],
   findChild: (): Cursor => notFoundCursor,
@@ -52,10 +50,6 @@ export class OkCursor implements Cursor {
 
   public entry(): IndexEntry {
     return this.treePath.at(-1)?.entry!;
-  }
-  
-  public asset(key: string): string | null {
-    return this.entry().assets?.[key] ?? null;
   }
 
   public children(): OkCursor[] {

@@ -1,3 +1,6 @@
+import { promises as fs } from "fs";
+import path from "path";
+import mime from "mime-types";
 import {
   ContentType,
   createIndexingContext,
@@ -59,6 +62,11 @@ const summarizeEntry = (entry: IndexEntry): IndexSummary => {
   };
 }
 
+export interface Asset {
+  readonly data: Buffer;
+  readonly contentType: string;
+}
+
 export class Filefish<E extends IndexEntry> {
   private rootEntry: E;
   private loadingContext: LoadingContext;
@@ -95,6 +103,27 @@ export class Filefish<E extends IndexEntry> {
     }
 
     return contentType.loadContent(cursor, this.loadingContext);
+  }
+
+  public async loadAsset(cursor: Cursor, assetName: string): Promise<Asset | 'not-found'> {
+    if (!cursor.isOk()) {
+      return 'not-found';
+    }
+
+    const entry = cursor.entry();
+    const asset = entry.assets?.find((asset) => asset === assetName);
+    if (asset === undefined) {
+      return 'not-found';
+    }
+
+    const assetPath = entry.fsNode.type === 'file'
+      ? path.resolve(entry.fsNode.path, '../assets', asset)
+      : path.resolve(entry.fsNode.path, 'assets', asset);
+
+    return {
+      data: await fs.readFile(assetPath),
+      contentType: mime.lookup(assetPath) || 'application/octet-stream',
+    }
   }
 
   public async loadShallowContent<ShallowContent>(
