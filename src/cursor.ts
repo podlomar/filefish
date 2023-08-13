@@ -17,6 +17,7 @@ export interface Cursor {
   parent(): Cursor;
   root(): Cursor;
   nthSibling(steps: number): Cursor;
+  nthChild(index: number): Cursor;
   nextSibling(): Cursor;
   prevSibling(): Cursor;
 }
@@ -33,6 +34,7 @@ const notFoundCursor: Cursor = {
   parent: (): Cursor => notFoundCursor,
   root: (): Cursor => notFoundCursor,
   nthSibling: (): Cursor => notFoundCursor,
+  nthChild: (): Cursor => notFoundCursor,
   nextSibling: (): Cursor => notFoundCursor,
   prevSibling: (): Cursor => notFoundCursor,
 };
@@ -146,6 +148,27 @@ export class OkCursor implements Cursor {
       ...parentPath,
       {
         entry: sibling,
+        pos: index,
+      }
+    ]);
+  }
+
+  public nthChild(index: number): Cursor {
+    const entry = this.entry();
+
+    if (entry.type === 'leaf') {
+      return notFoundCursor;
+    }
+    
+    const child = entry.subEntries.at(index);
+    if (child === undefined) {
+      return notFoundCursor;
+    }
+
+    return new OkCursor([
+      ...this.treePath,
+      {
+        entry: child,
         pos: index,
       }
     ]);
