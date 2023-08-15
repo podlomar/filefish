@@ -78,10 +78,10 @@ export class Filefish<E extends IndexEntry> {
 
   public constructor(rootEntry: E, options: Partial<FilefishOptions> = {}) {
     this.rootEntry = rootEntry;
-    this.loadingContext = createLoadingContext();
     this.options = {
       assetsBasePath: options.assetsBasePath ?? '',
     };
+    this.loadingContext = createLoadingContext(this.options.assetsBasePath);
   }
 
   public rootCursor() {
@@ -132,20 +132,6 @@ export class Filefish<E extends IndexEntry> {
       data: await fs.readFile(assetPath),
       contentType: mime.lookup(assetPath) || 'application/octet-stream',
     }
-  }
-
-  public assetPath(cursor: Cursor, assetName: string): string | null {
-    if (!cursor.isOk()) {
-      return null;
-    }
-    
-    const entry = cursor.entry();
-    const asset = entry.assets?.find((asset) => asset === assetName);
-    if (asset === undefined) {
-      return null;
-    }
-
-    return `${this.options.assetsBasePath}${cursor.contentPath()}/${asset}`;
   }
 
   public async loadShallowContent<ShallowContent>(

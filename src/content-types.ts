@@ -50,11 +50,12 @@ export interface LoadingContext {
   loadShallowMany<ShallowContent>(
     cursors: OkCursor[], contentType: RefableContentType<FsNode, IndexEntry, unknown, ShallowContent>
   ): Promise<ShallowContentResult<ShallowContent>[]>;
+  buildAssetPath(cursor: OkCursor, assetName: string): string;
 }
 
-export const createLoadingContext = (): LoadingContext => ({
+export const createLoadingContext = (assetsBasePath: string): LoadingContext => ({
   async load<Content>(
-    cursor: OkCursor, contentType: ContentType<FsNode, IndexEntry, Content>
+    cursor: OkCursor, contentType: ContentType<FsNode, IndexEntry, Content>,
   ): Promise<FullContentResult<Content>> {
     if (!contentType.fits(cursor.entry())) {
       return 'mismatch';
@@ -81,5 +82,9 @@ export const createLoadingContext = (): LoadingContext => ({
     cursors: OkCursor[], contentType: RefableContentType<FsNode, IndexEntry, unknown, ShallowContent>
   ): Promise<ShallowContentResult<ShallowContent>[]> {
     return Promise.all(cursors.map(cursor => this.loadShallow(cursor, contentType)));
-  }
+  },
+
+  buildAssetPath(cursor: OkCursor, assetName: string): string {
+    return `${assetsBasePath}${cursor.contentPath()}/${assetName}`;
+  },
 });
