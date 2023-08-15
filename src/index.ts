@@ -67,13 +67,21 @@ export interface Asset {
   readonly contentType: string;
 }
 
+export interface FilefishOptions {
+  readonly assetsBasePath: string;
+}
+
 export class Filefish<E extends IndexEntry> {
   private rootEntry: E;
   private loadingContext: LoadingContext;
+  private options: FilefishOptions;
 
-  public constructor(rootEntry: E) {
+  public constructor(rootEntry: E, options: Partial<FilefishOptions> = {}) {
     this.rootEntry = rootEntry;
     this.loadingContext = createLoadingContext();
+    this.options = {
+      assetsBasePath: options.assetsBasePath ?? '',
+    };
   }
 
   public rootCursor() {
@@ -126,6 +134,20 @@ export class Filefish<E extends IndexEntry> {
     }
   }
 
+  public assetPath(cursor: Cursor, assetName: string): string | null {
+    if (!cursor.isOk()) {
+      return null;
+    }
+    
+    const entry = cursor.entry();
+    const asset = entry.assets?.find((asset) => asset === assetName);
+    if (asset === undefined) {
+      return null;
+    }
+
+    return `${this.options.assetsBasePath}${cursor.contentPath()}/${asset}`;
+  }
+
   public async loadShallowContent<ShallowContent>(
     cursor: Cursor,
     contentType: RefableContentType<FsNode, IndexEntry, unknown, ShallowContent>
@@ -145,6 +167,7 @@ export class Filefish<E extends IndexEntry> {
 export const filefish = async <E extends IndexEntry>(
   root: string,
   rootContentType: ContentType<FsNode, E, unknown>,
+  options: Partial<FilefishOptions> = {},
 ): Promise<Filefish<E> | null> => {
   const indexingContext = createIndexingContext();
 
@@ -155,5 +178,5 @@ export const filefish = async <E extends IndexEntry>(
 
   const rootNode = rootResult.getOrThrow();
   const rootEntry = await rootContentType.index(rootNode, indexingContext);
-  return new Filefish(rootEntry);
+  return new Filefish(rootEntry, options);
 };
