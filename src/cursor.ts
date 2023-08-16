@@ -9,7 +9,6 @@ export interface Cursor {
   isOk(): this is OkCursor;
   entry(): IndexEntry | null;
   children(): OkCursor[];
-  findChild(fn: (entry: IndexEntry) => boolean): Cursor;
   path(): readonly PathItem[];
   pos(): number | null;
   contentPath(): string | null;
@@ -26,7 +25,6 @@ const notFoundCursor: Cursor = {
   isOk: (): false => false,
   entry: (): null => null,
   children: (): OkCursor[] => [],
-  findChild: (): Cursor => notFoundCursor,
   path: () => [],
   pos: (): null => null,
   contentPath: () => null,
@@ -63,20 +61,6 @@ export class OkCursor implements Cursor {
     return entry.subEntries.map(
       (subEntry, index) => new OkCursor([...this.treePath, { entry: subEntry, pos: index }])
     );
-  }
-  
-  public findChild(fn: (entry: IndexEntry) => boolean): Cursor {
-    const entry = this.entry();
-    if (entry.type !== 'inner') {
-      return notFoundCursor;
-    }
-
-    const index = entry.subEntries.findIndex(fn);
-    if (index === -1) {
-      return notFoundCursor;
-    }
-
-    return new OkCursor([...this.treePath, { entry: entry.subEntries[index], pos: index }]);
   }
 
   public path(): readonly PathItem[] {
