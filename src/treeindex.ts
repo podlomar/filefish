@@ -1,4 +1,4 @@
-import { FsNode } from "fs-query";
+import { FsNode } from "fs-inquire";
 
 export interface LogMessage {
   readonly level: 'info' | 'warn' | 'error';

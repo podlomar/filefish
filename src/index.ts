@@ -11,7 +11,7 @@ import {
   ShallowContentResult
 } from "./content-types.js";
 import { OkCursor, Cursor } from "./cursor.js";
-import { fsNode, FsNode } from "fs-query";
+import { fsNode, FsNode } from "fs-inquire";
 import { IndexEntry, LogMessage } from "./treeindex.js";
 
 export interface IndexSummary {

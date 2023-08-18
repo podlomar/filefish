@@ -1,5 +1,5 @@
 import { OkCursor } from "./cursor.js";
-import { FsNode } from "fs-query";
+import { FsNode } from "fs-inquire";
 import { IndexEntry } from "./treeindex.js";
 
 export interface ContentType<
