@@ -8,6 +8,8 @@ interface PathItem {
 export interface Cursor {
   isOk(): this is OkCursor;
   entry(): IndexEntry | null;
+  find(fn: (entry: IndexEntry) => boolean): Cursor;
+  search(fn: (entry: IndexEntry) => boolean): Cursor;
   children(): OkCursor[];
   path(): readonly PathItem[];
   pos(): number | null;
@@ -25,6 +27,8 @@ const notFoundCursor: Cursor = {
   isOk: (): false => false,
   entry: (): null => null,
   children: (): OkCursor[] => [],
+  find: (): Cursor => notFoundCursor,
+  search: (): Cursor => notFoundCursor,
   path: () => [],
   pos: (): null => null,
   contentPath: () => null,
@@ -40,7 +44,7 @@ const notFoundCursor: Cursor = {
 export class OkCursor implements Cursor {
   private readonly treePath: readonly PathItem[];
 
-  public constructor(treePath: PathItem[]) {
+  public constructor(treePath: readonly PathItem[]) {
     this.treePath = treePath;
   }
 
@@ -61,6 +65,40 @@ export class OkCursor implements Cursor {
     return entry.subEntries.map(
       (subEntry, index) => new OkCursor([...this.treePath, { entry: subEntry, pos: index }])
     );
+  }
+
+  public find(fn: (entry: IndexEntry) => boolean): Cursor {
+    const entry = this.entry();
+    if (entry.type !== 'inner') {
+      return notFoundCursor;
+    }
+
+    const index = entry.subEntries.findIndex(fn);
+    if (index === -1) {
+      return notFoundCursor;
+    }
+
+    return new OkCursor([...this.treePath, { entry: entry.subEntries[index], pos: index }]);
+  }
+
+  public search(fn: (entry: IndexEntry) => boolean): Cursor {
+    const entry = this.entry();
+    if (fn(entry)) {
+      return this;
+    }
+    
+    if (entry.type === 'leaf') {
+      return notFoundCursor;
+    }
+
+    for (const childCursor of this.children()) {
+      const cursor = childCursor.search(fn);
+      if (cursor.isOk()) {
+        return cursor;
+      }
+    }
+
+    return notFoundCursor;
   }
 
   public path(): readonly PathItem[] {

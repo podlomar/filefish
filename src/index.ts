@@ -12,7 +12,7 @@ import {
 } from "./content-types.js";
 import { OkCursor, Cursor } from "./cursor.js";
 import { fsNode, FsNode } from "fs-inquire";
-import { IndexEntry, LogMessage } from "./treeindex.js";
+import { IndexEntry, InnerEntry, LogMessage } from "./treeindex.js";
 
 export interface IndexSummary {
   readonly entryCount: number;
@@ -111,6 +111,28 @@ export class Filefish<E extends IndexEntry> {
     }
 
     return contentType.loadContent(cursor, this.loadingContext);
+  }
+
+  public async reindex(
+    cursor: Cursor,
+    contentType: ContentType<FsNode, IndexEntry, unknown>,
+  ): Promise<'ok' | 'not-found' | 'mismatch'> {
+    if (!cursor.isOk()) {
+      return 'not-found';
+    }
+    
+    if (!contentType.fits(cursor.entry())) {
+      return 'mismatch';
+    }
+
+    const indexingContext = createIndexingContext();
+    const entry = cursor.entry();
+    const newEntry = await contentType.index(entry.fsNode, indexingContext);
+    const parentEntry = cursor.parent().entry() as InnerEntry;
+    
+    parentEntry.subEntries[cursor.pos()] = newEntry;
+
+    return 'ok';
   }
 
   public async loadAsset(cursor: Cursor, assetName: string): Promise<Asset | 'not-found'> {
