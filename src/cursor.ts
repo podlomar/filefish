@@ -160,7 +160,7 @@ export class OkCursor implements Cursor {
     }
 
     const index = parent.subEntries.indexOf(this.entry()) + steps;
-    const sibling = parent.subEntries.at(index);
+    const sibling = parent.subEntries[index];
 
     if (sibling === undefined) {
       return notFoundCursor;
