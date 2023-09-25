@@ -1,16 +1,30 @@
-import { IndexEntry, InnerEntry } from "./treeindex.js";
+import { Fail, Result } from "monadix/result";
+import { ContentType, LoadingContext } from "./content-types.js";
+import { LoadError } from "./errors.js";
+import { IndexEntry, InnerEntry, ParentEntry } from "./treeindex.js";
 
 interface PathItem {
   entry: IndexEntry;
   pos: number;
 }
 
+type ChildOf<T extends IndexEntry> = T extends ParentEntry<infer E> ? E : never;
+
 export interface Cursor {
-  isOk(): this is OkCursor;
+  load<Content>(
+    contentType: ContentType<any, any, Content>, context: LoadingContext,
+  ): Promise<Result<Content, LoadError>>;
+  loadShallow<ShallowContent>(
+    contentType: ContentType<any, any, any, ShallowContent>, context: LoadingContext,
+  ): Promise<Result<ShallowContent, LoadError>>;
+  // loadChildren<Content>(
+  //   contentType: ContentType<any, any, Content>
+  // ): Promise<Result<Content, 'forbidden' | 'not-found'>[]>;
+  isOk(): this is OkCursor<IndexEntry>;
   entry(): IndexEntry | null;
   find(fn: (entry: IndexEntry) => boolean): Cursor;
-  search(fn: (entry: IndexEntry) => boolean): Cursor;
-  children(): OkCursor[];
+  search(fn: (cursor: OkCursor<IndexEntry>) => boolean): Cursor;
+  children(): OkCursor<IndexEntry>[];
   path(): readonly PathItem[];
   pos(): number | null;
   contentPath(): string | null;
@@ -25,8 +39,10 @@ export interface Cursor {
 
 const notFoundCursor: Cursor = {
   isOk: (): false => false,
+  load: async (): Promise<Fail<'not-found'>> => Result.fail('not-found'),
+  loadShallow: async (): Promise<Fail<'not-found'>> => Result.fail('not-found'),
   entry: (): null => null,
-  children: (): OkCursor[] => [],
+  children: (): OkCursor<IndexEntry>[] => [],
   find: (): Cursor => notFoundCursor,
   search: (): Cursor => notFoundCursor,
   path: () => [],
@@ -41,24 +57,44 @@ const notFoundCursor: Cursor = {
   prevSibling: (): Cursor => notFoundCursor,
 };
 
-export class OkCursor implements Cursor {
+export class OkCursor<E extends IndexEntry> implements Cursor {
   private readonly treePath: readonly PathItem[];
 
   public constructor(treePath: readonly PathItem[]) {
     this.treePath = treePath;
   }
 
-  public isOk(): this is OkCursor {
+  public isOk(): this is OkCursor<E> {
     return true;
   }
 
-  public entry(): IndexEntry {
-    return this.treePath.at(-1)?.entry!;
+  public async load<Content>(
+    contentType: ContentType<any, any, Content>, context: LoadingContext,
+  ): Promise<Result<Content, LoadError>> {
+    if (!contentType.fits(this)) {
+      return Result.fail('not-found');
+    }
+
+    return contentType.loadOne(this, context);
   }
 
-  public children(): OkCursor[] {
+  public async loadShallow<ShallowContent>(
+    contentType: ContentType<any, any, any, ShallowContent>, context: LoadingContext,
+  ): Promise<Result<ShallowContent, LoadError>> {
+    if (!contentType.fits(this)) {
+      return Result.fail('not-found');
+    }
+
+    return contentType.loadShallowOne(this, context);
+  }
+
+  public entry(): E {
+    return this.treePath.at(-1)?.entry! as E;
+  }
+
+  public children(): OkCursor<ChildOf<E>>[] {
     const entry = this.entry();
-    if (entry.type !== 'inner') {
+    if (entry.type === 'leaf') {
       return [];
     }
 
@@ -81,13 +117,12 @@ export class OkCursor implements Cursor {
     return new OkCursor([...this.treePath, { entry: entry.subEntries[index], pos: index }]);
   }
 
-  public search(fn: (entry: IndexEntry) => boolean): Cursor {
-    const entry = this.entry();
-    if (fn(entry)) {
+  public search(fn: (cursor: OkCursor<IndexEntry>) => boolean): Cursor {
+    if (fn(this)) {
       return this;
     }
     
-    if (entry.type === 'leaf') {
+    if (this.entry().type === 'leaf') {
       return notFoundCursor;
     }
 
@@ -115,7 +150,7 @@ export class OkCursor implements Cursor {
   }
 
   public navigate(...segments: string[]): Cursor {
-    const startEntry = this.entry();
+    const startEntry: IndexEntry = this.entry();
     
     const steps = segments.flatMap((segment) => segment.split('/'));
     const entryPath: PathItem[] = [];

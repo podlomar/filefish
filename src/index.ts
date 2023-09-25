@@ -3,16 +3,14 @@ import path from "path";
 import mime from "mime-types";
 import {
   ContentType,
-  createIndexingContext,
-  createLoadingContext,
-  FullContentResult,
+  IndexingContext,
   LoadingContext,
-  RefableContentType,
-  ShallowContentResult
 } from "./content-types.js";
 import { OkCursor, Cursor } from "./cursor.js";
 import { fsNode, FsNode } from "fs-inquire";
-import { IndexEntry, InnerEntry, LogMessage } from "./treeindex.js";
+import { IndexEntry, InnerEntry, LogMessage, ParentEntry } from "./treeindex.js";
+import { Result } from "monadix/result";
+import { LoadError } from "./errors.js";
 
 export interface IndexSummary {
   readonly entryCount: number;
@@ -69,19 +67,27 @@ export interface Asset {
 
 export interface FilefishOptions {
   readonly assetsBasePath: string;
+  createIndexingContext?: (contentId: string) => IndexingContext;
 }
 
 export class Filefish<E extends IndexEntry> {
   private rootEntry: E;
-  private loadingContext: LoadingContext;
   private options: FilefishOptions;
+  private loadingContext: LoadingContext;
 
   public constructor(rootEntry: E, options: Partial<FilefishOptions> = {}) {
     this.rootEntry = rootEntry;
     this.options = {
       assetsBasePath: options.assetsBasePath ?? '',
+      createIndexingContext: options.createIndexingContext,
     };
-    this.loadingContext = createLoadingContext(this.options.assetsBasePath);
+    this.loadingContext = {
+      assetBasePath: this.options.assetsBasePath,
+    };
+  }
+
+  public root(): E {
+    return this.rootEntry;
   }
 
   public rootCursor() {
@@ -93,43 +99,41 @@ export class Filefish<E extends IndexEntry> {
     ]);
   }
 
-  public summary(cursor: OkCursor = this.rootCursor()): IndexSummary {
+  public summary(cursor: OkCursor<IndexEntry> = this.rootCursor()): IndexSummary {
     const entry = cursor.entry();
     return summarizeEntry(entry);
   }
 
   public async loadContent<Content>(
     cursor: Cursor,
-    contentType: ContentType<FsNode, IndexEntry, Content>
-  ): Promise<FullContentResult<Content> | 'not-found'> {
-    if (!cursor.isOk()) {
-      return 'not-found';
-    }
-    
-    if (!contentType.fits(cursor.entry())) {
-      return 'mismatch';
-    }
+    contentType: ContentType<any, any, Content, any>
+  ): Promise<Result<Content, LoadError>> {
+    return cursor.load(contentType, this.loadingContext);
+  }
 
-    return contentType.loadContent(cursor, this.loadingContext);
+  public async loadShallowContent<ShallowContent>(
+    cursor: Cursor,
+    contentType: ContentType<any, any, any, ShallowContent>
+  ): Promise<Result<ShallowContent, LoadError>> {
+    return cursor.loadShallow(contentType, this.loadingContext);
   }
 
   public async reindex(
-    cursor: Cursor,
-    contentType: ContentType<FsNode, IndexEntry, unknown>,
+    cursor: Cursor, contentType: ContentType
   ): Promise<'ok' | 'not-found' | 'mismatch'> {
     if (!cursor.isOk()) {
       return 'not-found';
     }
     
-    if (!contentType.fits(cursor.entry())) {
+    if (!contentType.fits(cursor)) {
       return 'mismatch';
     }
 
-    const indexingContext = createIndexingContext();
+    const indexingContext = this.options.createIndexingContext?.(contentType.contentId)
+      ?? new IndexingContext(contentType.contentId, cursor.contentPath().split('/').slice(0, -1));
     const entry = cursor.entry();
-    const newEntry = await contentType.index(entry.fsNode, indexingContext);
-    const parentEntry = cursor.parent().entry() as InnerEntry;
-    
+    const newEntry = await contentType.indexOne(entry.fsNode, indexingContext);
+    const parentEntry = cursor.parent().entry() as ParentEntry;
     parentEntry.subEntries[cursor.pos()] = newEntry;
 
     return 'ok';
@@ -155,21 +159,6 @@ export class Filefish<E extends IndexEntry> {
       contentType: mime.lookup(assetPath) || 'application/octet-stream',
     }
   }
-
-  public async loadShallowContent<ShallowContent>(
-    cursor: Cursor,
-    contentType: RefableContentType<FsNode, IndexEntry, unknown, ShallowContent>
-  ): Promise<ShallowContentResult<ShallowContent> | 'not-found'> {
-    if (!cursor.isOk()) {
-      return 'not-found';
-    }
-    
-    if (!contentType.fits(cursor.entry())) {
-      return 'mismatch';
-    }
-
-    return contentType.loadShallowContent(cursor, this.loadingContext);
-  }
 }
 
 export const filefish = async <E extends IndexEntry>(
@@ -177,14 +166,14 @@ export const filefish = async <E extends IndexEntry>(
   rootContentType: ContentType<FsNode, E, unknown>,
   options: Partial<FilefishOptions> = {},
 ): Promise<Filefish<E> | null> => {
-  const indexingContext = createIndexingContext();
-
   const rootResult = fsNode(root).get();
   if (rootResult.isFail()) {
     return null;
   }
 
+  const indexingContext = options.createIndexingContext?.(rootContentType.contentId)
+    ?? new IndexingContext(rootContentType.contentId, []);
   const rootNode = rootResult.getOrThrow();
-  const rootEntry = await rootContentType.index(rootNode, indexingContext);
+  const rootEntry = await rootContentType.indexOne(rootNode, indexingContext);
   return new Filefish(rootEntry, options);
 };

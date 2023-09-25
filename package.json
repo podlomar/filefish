@@ -27,9 +27,9 @@
     "typescript": "^5.0.2"
   },
   "dependencies": {
-    "fs-inquire": "^1.0.0-alpha.2",
+    "fs-inquire": "^1.0.0-alpha.4",
     "mime-types": "^2.1.35",
-    "monadix": "^0.1.3",
+    "monadix": "^1.0.6",
     "voca": "^1.4.0",
     "yaml": "^2.1.0"
   }
