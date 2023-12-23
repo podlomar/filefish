@@ -1,241 +1,182 @@
-import { Fail, Result } from "monadix/result";
-import { ContentType, LoadingContext } from "./content-types.js";
-import { LoadError } from "./errors.js";
-import { IndexEntry, InnerEntry, ParentEntry } from "./treeindex.js";
+import { IndexEntry, ParentEntry } from "./indexer.js";
 
-interface PathItem {
-  entry: IndexEntry;
+interface PathItem<Entry extends IndexEntry> {
+  entry: Entry;
   pos: number;
 }
 
-type ChildOf<T extends IndexEntry> = T extends ParentEntry<infer E> ? E : never;
-
-export interface Cursor {
-  load<Content>(
-    contentType: ContentType<any, any, Content>, context: LoadingContext,
-  ): Promise<Result<Content, LoadError>>;
-  loadShallow<ShallowContent>(
-    contentType: ContentType<any, any, any, ShallowContent>, context: LoadingContext,
-  ): Promise<Result<ShallowContent, LoadError>>;
-  // loadChildren<Content>(
-  //   contentType: ContentType<any, any, Content>
-  // ): Promise<Result<Content, 'forbidden' | 'not-found'>[]>;
-  isOk(): this is OkCursor<IndexEntry>;
-  entry(): IndexEntry | null;
-  find(fn: (entry: IndexEntry) => boolean): Cursor;
-  search(fn: (cursor: OkCursor<IndexEntry>) => boolean): Cursor;
-  children(): OkCursor<IndexEntry>[];
-  path(): readonly PathItem[];
-  pos(): number | null;
-  contentPath(): string | null;
-  navigate(...segments: string[]): Cursor;
-  parent(): Cursor;
-  root(): Cursor;
-  nthSibling(steps: number): Cursor;
-  nthChild(index: number): Cursor;
-  nextSibling(): Cursor;
-  prevSibling(): Cursor;
+export interface Agent {
+  getPermission(cursor: Cursor): 'open' | 'locked';
 }
 
-const notFoundCursor: Cursor = {
-  isOk: (): false => false,
-  load: async (): Promise<Fail<'not-found'>> => Result.fail('not-found'),
-  loadShallow: async (): Promise<Fail<'not-found'>> => Result.fail('not-found'),
-  entry: (): null => null,
-  children: (): OkCursor<IndexEntry>[] => [],
-  find: (): Cursor => notFoundCursor,
-  search: (): Cursor => notFoundCursor,
-  path: () => [],
-  pos: (): null => null,
-  contentPath: () => null,
-  navigate: (): Cursor => notFoundCursor,
-  parent: (): Cursor => notFoundCursor,
-  root: (): Cursor => notFoundCursor,
-  nthSibling: (): Cursor => notFoundCursor,
-  nthChild: (): Cursor => notFoundCursor,
-  nextSibling: (): Cursor => notFoundCursor,
-  prevSibling: (): Cursor => notFoundCursor,
+export const agnosticAgent: Agent = {
+  getPermission: () => 'open',
 };
 
-export class OkCursor<E extends IndexEntry> implements Cursor {
-  private readonly treePath: readonly PathItem[];
+type ChildOf<T extends IndexEntry> = T extends ParentEntry<infer E> ? E : never;
 
-  public constructor(treePath: readonly PathItem[]) {
-    this.treePath = treePath;
+export class Cursor<Entry extends IndexEntry = IndexEntry> {
+  private readonly agent: Agent;
+  private readonly parentPath: readonly PathItem<IndexEntry>[];
+  private readonly current: PathItem<Entry>;
+
+  public constructor(
+    parentPath: readonly PathItem<IndexEntry>[],
+    current: PathItem<Entry>,
+    agent: Agent,
+  ) {
+    this.parentPath = parentPath;
+    this.current = current;
+    this.agent = agent;
   }
 
-  public isOk(): this is OkCursor<E> {
-    return true;
+  public entry(): Entry {
+    return this.current.entry;
   }
 
-  public async load<Content>(
-    contentType: ContentType<any, any, Content>, context: LoadingContext,
-  ): Promise<Result<Content, LoadError>> {
-    if (!contentType.fits(this)) {
-      return Result.fail('not-found');
+  public permission(): 'open' | 'locked' {
+    return this.agent.getPermission(this);
+  }
+
+  public path(): readonly PathItem<IndexEntry>[] {
+    return [...this.parentPath, this.current];
+  }
+
+  public contentPath(): string {
+    const path = this.path();
+    // NOTE: The first entry is the root entry, which is not part of the content path.
+    return '/' + path.slice(1).map((item) => item.entry.name).join('/');
+  }
+
+  public parent(): Cursor<ParentEntry> | null {
+    if (this.parentPath.length === 0) {
+      return null;
     }
 
-    return contentType.loadOne(this, context);
+    const parentPath = this.parentPath.slice(0, -1);
+    return new Cursor(parentPath, this.parentPath.at(-1)! as PathItem<ParentEntry>, this.agent);
   }
 
-  public async loadShallow<ShallowContent>(
-    contentType: ContentType<any, any, any, ShallowContent>, context: LoadingContext,
-  ): Promise<Result<ShallowContent, LoadError>> {
-    if (!contentType.fits(this)) {
-      return Result.fail('not-found');
-    }
-
-    return contentType.loadShallowOne(this, context);
-  }
-
-  public entry(): E {
-    return this.treePath.at(-1)?.entry! as E;
-  }
-
-  public children(): OkCursor<ChildOf<E>>[] {
+  public children(): Cursor<ChildOf<Entry>>[] {
     const entry = this.entry();
     if (entry.type === 'leaf') {
       return [];
     }
-
+    
     return entry.subEntries.map(
-      (subEntry, index) => new OkCursor([...this.treePath, { entry: subEntry, pos: index }])
+      (subEntry, index) => new Cursor(
+        [...this.parentPath, this.current],
+        { entry: subEntry as ChildOf<Entry>, pos: index },
+        this.agent,
+      ),
     );
   }
 
-  public find(fn: (entry: IndexEntry) => boolean): Cursor {
-    const entry = this.entry();
-    if (entry.type !== 'inner') {
-      return notFoundCursor;
-    }
-
-    const index = entry.subEntries.findIndex(fn);
-    if (index === -1) {
-      return notFoundCursor;
-    }
-
-    return new OkCursor([...this.treePath, { entry: entry.subEntries[index], pos: index }]);
-  }
-
-  public search(fn: (cursor: OkCursor<IndexEntry>) => boolean): Cursor {
-    if (fn(this)) {
-      return this;
-    }
-    
-    if (this.entry().type === 'leaf') {
-      return notFoundCursor;
-    }
-
-    for (const childCursor of this.children()) {
-      const cursor = childCursor.search(fn);
-      if (cursor.isOk()) {
-        return cursor;
-      }
-    }
-
-    return notFoundCursor;
-  }
-
-  public path(): readonly PathItem[] {
-    return this.treePath;
-  }
-
   public pos(): number {
-    return this.treePath.at(-1)?.pos!;
+    return this.current.pos;
   }
 
-  public contentPath(): string {
-    // NOTE: The first entry is the root entry, which is not part of the content path.
-    return '/' + this.treePath.slice(1).map((item) => item.entry.name).join('/');
-  }
-
-  public navigate(...segments: string[]): Cursor {
-    const startEntry: IndexEntry = this.entry();
+  public root(): IndexEntry {
+    if (this.parentPath.length === 0) {
+      return this.current.entry;
+    }
     
-    const steps = segments.flatMap((segment) => segment.split('/'));
-    const entryPath: PathItem[] = [];
-    let currentEntry = startEntry;
-    
-    for(const step of steps) {
-      if (currentEntry.type !== 'inner') {
-        return notFoundCursor;
-      }
-        
-      const index = currentEntry.subEntries.findIndex((e) => e.name === step);
-      if (index === -1) {
-        return notFoundCursor;
-      }
-      
-      currentEntry = currentEntry.subEntries[index];
-      entryPath.push({ entry: currentEntry, pos: index });
-    }
-
-    return new OkCursor([...this.treePath, ...entryPath]);
+    return this.parentPath[this.parentPath.length - 1].entry;
   }
 
-  public parent(): Cursor {
-    const parentPath = this.treePath.slice(0, -1);
-    if (parentPath.length === 0) {
-      return notFoundCursor;
+  public nthSibling(steps: number): Cursor<Entry> | null {
+    const parent = this.parent();
+    if (parent === null) {
+      return null;
     }
 
-    return new OkCursor(parentPath);
-  }
-
-  public root(): Cursor {
-    return new OkCursor([this.treePath[0]]);
-  }
-
-  public nthSibling(steps: number): Cursor {
-    const parentPath = this.treePath.slice(0, -1);
-    const parent = parentPath.at(-1)?.entry as InnerEntry | undefined;
-
-    if (parent === undefined) {
-      return notFoundCursor;
-    }
-
-    const index = parent.subEntries.indexOf(this.entry()) + steps;
-    const sibling = parent.subEntries[index];
+    const parentEntry = parent.entry();
+    const index = parentEntry.subEntries.indexOf(this.entry()) + steps;
+    const sibling = parentEntry.subEntries[index];
 
     if (sibling === undefined) {
-      return notFoundCursor;
+      return null;
     }
 
-    return new OkCursor([
-      ...parentPath,
+    return new Cursor(
+      this.parentPath,
       {
-        entry: sibling,
+        entry: sibling as Entry,
         pos: index,
-      }
-    ]);
+      },
+      this.agent,
+    );
   }
 
-  public nthChild(index: number): Cursor {
+  public nthChild(index: number): Cursor<ChildOf<Entry>> | null {
     const entry = this.entry();
 
     if (entry.type === 'leaf') {
-      return notFoundCursor;
+      return null;
     }
     
-    const child = entry.subEntries.at(index);
+    const child = entry.subEntries.at(index) as ChildOf<Entry> | undefined;
     if (child === undefined) {
-      return notFoundCursor;
+      return null;
     }
 
-    return new OkCursor([
-      ...this.treePath,
+    return new Cursor(
+      [...this.parentPath, this.current],
       {
         entry: child,
         pos: index,
-      }
-    ]);
+      },
+      this.agent,
+    );
   }
 
-  public nextSibling(): Cursor {
+  public nextSibling(): Cursor<Entry> | null {
     return this.nthSibling(1);
   }
 
-  public prevSibling(): Cursor {
+  public prevSibling(): Cursor<Entry> | null {
     return this.nthSibling(-1);
+  }
+
+//   public find(fn: (entry: IndexEntry) => boolean): Cursor<ChildOf<Entry>> {
+//     const entry = this.entry();
+//     if (entry.type !== 'parent') {
+//       return notFoundCursor;
+//     }
+
+//     const index = entry.subEntries.findIndex(fn);
+//     if (index === -1) {
+//       return notFoundCursor;
+//     }
+
+//     const childEntry = entry.subEntries[index] as ChildOf<Entry>;
+
+//     return new EntryCursor(
+//       [...this.parentPath, this.current],
+//       { entry: childEntry, pos: index }
+//     );
+//   }
+
+  public navigate(...segments: string[]): Cursor<IndexEntry> | null {
+    const steps = segments.flatMap((segment) => segment.split('/'));
+    const parentPath: PathItem<IndexEntry>[] = [];
+    let currentItem: PathItem<IndexEntry> = this.current;
+    
+    for(const step of steps) {
+      if (currentItem.entry.type !== 'parent') {
+        return null;
+      }
+        
+      const index = currentItem.entry.subEntries.findIndex((e) => e.name === step);
+      if (index === -1) {
+        return null;
+      }
+      
+      const entry = currentItem.entry.subEntries[index];
+      parentPath.push(currentItem);
+      currentItem = { entry, pos: index };
+    }
+
+    return new Cursor([...this.parentPath, ...parentPath], currentItem, this.agent);
   }
 };

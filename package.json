@@ -8,29 +8,39 @@
     "clean": "rimraf dist",
     "build": "npm run clean && tsc",
     "dev": "tsc -w",
-    "test": "mocha",
+    "test": "mocha tests/**/*.test.js",
     "prepublishOnly": "npm run build"
   },
   "author": "Martin Podloucký",
+  "exports": {
+    ".": "./dist/index.js",
+    "./builtins/*": "./dist/builtins/*.js",
+    "./content-type": "./dist/content-type.js",
+    "./cursor": "./dist/cursor.js",
+    "./loader": "./dist/loader.js",
+    "./indexer": "./dist/indexer.js"
+  },
   "files": [
     "dist",
     "package.json"
   ],
   "license": "ISC",
   "devDependencies": {
+    "@types/chai": "^4.3.11",
     "@types/mime-types": "^2.1.1",
+    "@types/mocha": "^10.0.6",
     "@types/node": "^18.15.3",
-    "@types/voca": "^1.4.2",
     "@types/yaml": "^1.9.7",
+    "chai": "^4.3.10",
     "mocha": "^10.0.0",
+    "mock-fs": "^5.2.0",
     "rimraf": "^5.0.1",
     "typescript": "^5.0.2"
   },
   "dependencies": {
-    "fs-inquire": "^1.0.0-alpha.4",
+    "fs-inquire": "file:../fs-query",
     "mime-types": "^2.1.35",
     "monadix": "^1.0.6",
-    "voca": "^1.4.0",
     "yaml": "^2.1.0"
   }
 }
