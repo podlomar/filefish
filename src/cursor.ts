@@ -35,6 +35,10 @@ export class Cursor<Entry extends IndexEntry = IndexEntry> {
   }
 
   public permission(): 'open' | 'locked' {
+    if (this.current.entry.access === 'public') {
+      return 'open';
+    }
+    
     return this.agent.getPermission(this);
   }
 

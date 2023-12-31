@@ -1,6 +1,14 @@
 import { FsNode } from "fs-inquire";
 import type { ContentType } from "./content-type.js";
 
+export type AttributeValue = string | number | boolean | null | Attributes | AttributesArray;
+
+export interface Attributes {
+  readonly [key: string]: AttributeValue;
+}
+
+export type AttributesArray = readonly AttributeValue[];
+
 export interface LogMessage {
   readonly level: 'info' | 'warn' | 'error';
   readonly code: string;
@@ -8,42 +16,46 @@ export interface LogMessage {
   readonly meta?: unknown;
 }
 
-export interface BaseEntry<Data extends Record<string, any>> {
+export type EntryAccess = 'public' | 'claim';
+
+export interface BaseEntry<Attrs extends Attributes> {
   readonly contentId: string;
+  readonly access: EntryAccess;
   readonly name: string;
   readonly title: string;
   readonly fsNode: FsNode;
   readonly assets?: string[];
   readonly log?: LogMessage[];
-  readonly data: Data;
+  readonly attrs: Attrs;
 }
 
 export interface ParentEntry<
   E extends IndexEntry = IndexEntry,
-  Data extends Record<string, any> = Record<string, any>,
-> extends BaseEntry<Data> {
+  Attrs extends Attributes = Attributes,
+> extends BaseEntry<Attrs> {
   readonly type: 'parent';
   readonly subEntries: E[],
 }
 
 export interface LeafEntry<
-  Data extends Record<string, any> = Record<string, any>
-> extends BaseEntry<Data> {
+  Attrs extends Attributes = Attributes,
+> extends BaseEntry<Attrs> {
   readonly type: 'leaf';
 }
 
 export type IndexEntry<
-  Data extends Record<string, any> = Record<string, any>
-> = ParentEntry<IndexEntry, Data> | LeafEntry<Data>;
+  Attrs extends Attributes = Attributes,
+> = ParentEntry<IndexEntry, Attrs> | LeafEntry<Attrs>;
 
-export const buildBaseEntry = <Data extends {}>(
-  contentId: string, fsNode: FsNode, data: Data
-): BaseEntry<Data> => ({
+export const buildBaseEntry = <Attrs extends Attributes>(
+  contentId: string, fsNode: FsNode, access: EntryAccess, attrs: Attrs
+): BaseEntry<Attrs> => ({
   contentId,
+  access,
   name: fsNode.fileName,
   title: fsNode.fileName,
   fsNode,
-  data,
+  attrs,
 });
 
 export interface Indexer {
@@ -55,11 +67,11 @@ export interface Indexer {
   indexChildren<Node extends FsNode, Entry extends IndexEntry>(
     nodes: Node[], contentType: ContentType<Node, Entry, any>,
   ): Promise<Entry[]>;
-  buildLeafEntry<Data extends {}>(fsNode: FsNode, data: Data,
-  ): LeafEntry<Data>;
-  buildParentEntry<Entry extends IndexEntry, Data extends {}>(
-    fsNode: FsNode, data: Data, subEntries: Entry[],
-  ): ParentEntry<Entry, Data>;
+  buildLeafEntry<Attrs extends Attributes>(fsNode: FsNode, access: EntryAccess, attrs: Attrs,
+  ): LeafEntry<Attrs>;
+  buildParentEntry<Entry extends IndexEntry, Attrs extends Attributes>(
+    fsNode: FsNode, access: EntryAccess, attrs: Attrs, subEntries: Entry[],
+  ): ParentEntry<Entry, Attrs>;
 }
 
 export class FilefishIndexer implements Indexer {
@@ -91,20 +103,20 @@ export class FilefishIndexer implements Indexer {
     );
   }
 
-  public buildLeafEntry<Data extends {}>(
-    fsNode: FsNode, data: Data,
-  ): LeafEntry<Data> {
+  public buildLeafEntry<Attrs extends Attributes>(
+    fsNode: FsNode, access: EntryAccess, attrs: Attrs,
+  ): LeafEntry<Attrs> {
     return {
-      ...buildBaseEntry(this.contentId, fsNode, data),
+      ...buildBaseEntry(this.contentId, fsNode, access, attrs),
       type: 'leaf',
     }
   }
 
-  public buildParentEntry<Entry extends IndexEntry, Data extends {}>(
-    fsNode: FsNode, data: Data, subEntries: Entry[],
-  ): ParentEntry<Entry, Data> {
+  public buildParentEntry<Entry extends IndexEntry, Attrs extends Attributes>(
+    fsNode: FsNode, access: EntryAccess, attrs: Attrs, subEntries: Entry[],
+  ): ParentEntry<Entry, Attrs> {
     return {
-      ...buildBaseEntry(this.contentId, fsNode, data),
+      ...buildBaseEntry(this.contentId, fsNode, access, attrs),
       type: 'parent',
       subEntries,
     }

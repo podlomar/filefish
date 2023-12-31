@@ -18,7 +18,7 @@ export interface FolderContent {
 
 export const PlainTextContentType = defineContentType('text/plain', {
   indexNode: async (node: FileNode, indexer: Indexer): Promise<LeafEntry> => {
-    return indexer.buildLeafEntry(node, {});
+    return indexer.buildLeafEntry(node, 'public', {});
   },
   loadContent: async (cursor: Cursor<LeafEntry>, loader: Loader): Promise<Result<string, LoadError>> => {
     const fileContent = await fs.readFile(cursor.entry().fsNode.path, 'utf-8');
@@ -36,7 +36,7 @@ export const FolderContentType = defineContentType('folder', {
       )
     );
 
-    return indexer.buildParentEntry(node, {}, subEntries);
+    return indexer.buildParentEntry(node, 'public', {}, subEntries);
   },
   loadContent: async (
     cursor: Cursor<ParentEntry>, loader: Loader
