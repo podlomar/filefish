@@ -1,9 +1,7 @@
-import { promises as fs } from "fs";
-import path from "path";
-import mime from "mime-types";
+import mime from 'mime-types';
+import { promises as fs } from 'fs';
 import { ContentType } from "./content-type.js";
 import { Agent, Cursor, agnosticAgent } from "./cursor.js";
-import { fsNode, FsNode } from "fs-inquire";
 import { FilefishIndexer, IndexEntry, Indexer, LogMessage, ParentEntry } from "./indexer.js";
 import { Result } from "monadix/result";
 import { FilefishLoader, LoadError, Loader } from "./loader.js";
@@ -78,16 +76,11 @@ export class Filefish<E extends IndexEntry> {
     this.loader = this.options.createLoader(this.options.assetsBasePath);
   }
 
-  public static async create<E extends IndexEntry>(
-    root: string,
-    rootContentType: ContentType<FsNode, E, unknown>,
+  public static async create<RootSource, RootEntry extends IndexEntry>(
+    rootSource: RootSource,
+    rootContentType: ContentType<RootSource, RootEntry, unknown>,
     options: Partial<FilefishOptions> = {},
-  ): Promise<Filefish<E> | null> {
-    const rootResult = fsNode(root).get();
-    if (rootResult.isFail()) {
-      return null;
-    }
-    const rootNode = rootResult.getOrThrow();
+  ): Promise<Filefish<RootEntry> | null> {
     const fullOptions: FilefishOptions = {
       assetsBasePath: options.assetsBasePath ?? '/assets',
       createIndexer: options.createIndexer ?? (
@@ -101,8 +94,7 @@ export class Filefish<E extends IndexEntry> {
     };
     
     const indexer = fullOptions.createIndexer(rootContentType.contentId, ['']);
-    const rootEntry = await rootContentType.indexNode(rootNode, indexer);
-  
+    const rootEntry = await rootContentType.index(rootSource, indexer);  
     return new Filefish(rootEntry, fullOptions);
   }
 
@@ -144,8 +136,9 @@ export class Filefish<E extends IndexEntry> {
       contentType.contentId,
       cursor.contentPath().split('/').slice(0, -1)
     );
+  
     const entry = cursor.entry();
-    const newEntry = await indexer.indexNode(entry.fsNode, contentType);
+    const newEntry = await indexer.indexChild(entry.name, entry.source, contentType);
     const parent = cursor.parent();
 
     if (parent === null) {
@@ -159,18 +152,19 @@ export class Filefish<E extends IndexEntry> {
 
   public async loadAsset(cursor: Cursor, assetName: string): Promise<Asset | 'not-found'> {
     const entry = cursor.entry();
-    const asset = entry.assets?.find((asset) => asset === assetName);
-    if (asset === undefined) {
+    if (entry.assets === undefined) {
       return 'not-found';
     }
 
-    const assetPath = entry.fsNode.type === 'file'
-      ? path.resolve(entry.fsNode.path, '../assets', asset)
-      : path.resolve(entry.fsNode.path, 'assets', asset);
+    if (!entry.assets.names.includes(assetName)) {
+      return 'not-found';
+    }
+
+    const assetPath = `${entry.assets.folder}/${assetName}`;
 
     return {
       data: await fs.readFile(assetPath),
       contentType: mime.lookup(assetPath) || 'application/octet-stream',
     }
   }
-}
+};

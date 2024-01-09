@@ -1,10 +1,9 @@
-import { FsNode } from "fs-inquire";
 import type { ContentType } from "./content-type.js";
 
 export type AttributeValue = string | number | boolean | null | Attributes | AttributesArray;
 
-export interface Attributes {
-  readonly [key: string]: AttributeValue;
+export type Attributes<T extends string = any> = {
+  readonly [key in T]: AttributeValue;
 }
 
 export type AttributesArray = readonly AttributeValue[];
@@ -16,107 +15,123 @@ export interface LogMessage {
   readonly meta?: unknown;
 }
 
-export type EntryAccess = 'public' | 'claim';
+export type EntryAccess = 'public' | 'protected';
 
-export interface BaseEntry<Attrs extends Attributes> {
+export interface EntryAssets {
+  readonly folder: string;
+  readonly names: readonly string[];
+}
+
+export interface BaseEntry<Source, Attrs extends Attributes> {
   readonly contentId: string;
+  readonly source: Source;
   readonly access: EntryAccess;
   readonly name: string;
   readonly title: string;
-  readonly fsNode: FsNode;
-  readonly assets?: string[];
+  readonly assets?: EntryAssets;
   readonly log?: LogMessage[];
   readonly attrs: Attrs;
 }
 
 export interface ParentEntry<
+  Source = any,
   E extends IndexEntry = IndexEntry,
   Attrs extends Attributes = Attributes,
-> extends BaseEntry<Attrs> {
+> extends BaseEntry<Source, Attrs> {
   readonly type: 'parent';
   readonly subEntries: E[],
 }
 
 export interface LeafEntry<
-  Attrs extends Attributes = Attributes,
-> extends BaseEntry<Attrs> {
+  Source = any, Attrs extends Attributes = Attributes,
+> extends BaseEntry<Source, Attrs> {
   readonly type: 'leaf';
 }
 
 export type IndexEntry<
-  Attrs extends Attributes = Attributes,
-> = ParentEntry<IndexEntry, Attrs> | LeafEntry<Attrs>;
+  Source = any, Attrs extends Attributes = Attributes,
+> = ParentEntry<Source, IndexEntry, Attrs> | LeafEntry<Source, Attrs>;
 
-export const buildBaseEntry = <Attrs extends Attributes>(
-  contentId: string, fsNode: FsNode, access: EntryAccess, attrs: Attrs
-): BaseEntry<Attrs> => ({
+export const buildBaseEntry = <Source, Attrs extends Attributes>(
+  contentId: string,
+  name: string,
+  source: Source,
+  access: EntryAccess,
+  attrs: Attrs,
+): BaseEntry<Source, Attrs> => ({
   contentId,
+  source,
   access,
-  name: fsNode.fileName,
-  title: fsNode.fileName,
-  fsNode,
+  name: name,
+  title: name,
   attrs,
 });
 
 export interface Indexer {
-  readonly contentPath: readonly string[];
+  readonly parentContentPath: readonly string[];
   createChild(contentId: string, name: string): Indexer;
-  indexNode<Node extends FsNode, Entry extends IndexEntry>(
-    node: Node, contentType: ContentType<Node, Entry, any>,
+  indexChild<Source, Entry extends IndexEntry>(
+    name: string, source: Source, contentType: ContentType<Source, Entry, any>,
   ): Promise<Entry>;
-  indexChildren<Node extends FsNode, Entry extends IndexEntry>(
-    nodes: Node[], contentType: ContentType<Node, Entry, any>,
+  indexChildren<Source, Entry extends IndexEntry>(
+    name: string, sources: Source[], contentType: ContentType<Source, Entry, any>,
   ): Promise<Entry[]>;
-  buildLeafEntry<Attrs extends Attributes>(fsNode: FsNode, access: EntryAccess, attrs: Attrs,
-  ): LeafEntry<Attrs>;
-  buildParentEntry<Entry extends IndexEntry, Attrs extends Attributes>(
-    fsNode: FsNode, access: EntryAccess, attrs: Attrs, subEntries: Entry[],
-  ): ParentEntry<Entry, Attrs>;
+  buildLeafEntry<Source, Attrs extends Attributes>(
+    name: string, source: Source, access: EntryAccess, attrs: Attrs
+  ): LeafEntry<Source, Attrs>;
+  buildParentEntry<Source, Entry extends IndexEntry, Attrs extends Attributes>(
+    name: string, source: Source, access: EntryAccess, attrs: Attrs, subEntries: Entry[],
+  ): ParentEntry<Source, Entry, Attrs>;
 }
 
 export class FilefishIndexer implements Indexer {
-  public readonly contentPath: readonly string[];
+  public readonly parentContentPath: readonly string[];
   public readonly contentId: string;
 
-  public constructor(contentId: string, contentPath: readonly string[]) {
+  public constructor(
+    contentId: string,
+    parentContentPath: readonly string[],
+  ) {
     this.contentId = contentId;
-    this.contentPath = contentPath;
+    this.parentContentPath = parentContentPath;
   }
 
   public createChild(contentId: string, name: string): Indexer {
-    return new FilefishIndexer(contentId, [...this.contentPath, name]);
+    return new FilefishIndexer(contentId, [...this.parentContentPath, name]);
   }
 
-  public async indexNode<Node extends FsNode, Entry extends IndexEntry>(
-    node: Node, contentType: ContentType<Node, Entry, any>,
+  public async indexChild<Source, Entry extends IndexEntry>(
+    name: string, source: Source, contentType: ContentType<Source, Entry, any>,
   ): Promise<Entry> {
-    return contentType.indexNode(node, this.createChild(contentType.contentId, node.fileName));
+    return contentType.index(source, this.createChild(contentType.contentId, name));
   }
 
-  public async indexChildren<Node extends FsNode, Entry extends IndexEntry>(
-    nodes: Node[], contentType: ContentType<Node, Entry, any>,
+  public async indexChildren<Source, Entry extends IndexEntry>(
+    name: string, sources: Source[], contentType: ContentType<Source, Entry, any>,
   ): Promise<Entry[]> {
     return Promise.all(
-      nodes.map(
-        (node) => contentType.indexNode(node, this.createChild(contentType.contentId, node.fileName))
+      sources.map(
+        (source) => contentType.index(source, this.createChild(contentType.contentId, name))
       )
     );
   }
 
-  public buildLeafEntry<Attrs extends Attributes>(
-    fsNode: FsNode, access: EntryAccess, attrs: Attrs,
-  ): LeafEntry<Attrs> {
+  public buildLeafEntry<Source, Attrs extends Attributes>(
+    name: string, source: Source, access: EntryAccess, attrs: Attrs,
+  ): LeafEntry<Source, Attrs> {
     return {
-      ...buildBaseEntry(this.contentId, fsNode, access, attrs),
+      ...buildBaseEntry(this.contentId, name, source, access, attrs),
       type: 'leaf',
     }
   }
 
-  public buildParentEntry<Entry extends IndexEntry, Attrs extends Attributes>(
-    fsNode: FsNode, access: EntryAccess, attrs: Attrs, subEntries: Entry[],
-  ): ParentEntry<Entry, Attrs> {
+  public buildParentEntry<
+    Source, Entry extends IndexEntry, Attrs extends Attributes
+  >(
+    name: string, source: Source, access: EntryAccess, attrs: Attrs, subEntries: Entry[],
+  ): ParentEntry<Source, Entry, Attrs> {
     return {
-      ...buildBaseEntry(this.contentId, fsNode, access, attrs),
+      ...buildBaseEntry(this.contentId, name, source, access, attrs),
       type: 'parent',
       subEntries,
     }
