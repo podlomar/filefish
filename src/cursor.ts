@@ -13,6 +13,10 @@ export const agnosticAgent: Agent = {
   getPermission: () => 'open',
 };
 
+export const publicAgent: Agent = {
+  getPermission: () => 'locked',
+};
+
 type ChildOf<T extends IndexEntry> = T extends ParentEntry<any, infer E> ? E : never;
 
 export class Cursor<Entry extends IndexEntry = IndexEntry> {

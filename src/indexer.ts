@@ -1,13 +1,5 @@
 import type { ContentType } from "./content-type.js";
 
-export type AttributeValue = string | number | boolean | null | Attributes | AttributesArray;
-
-export type Attributes<T extends string = any> = {
-  readonly [key in T]: AttributeValue;
-}
-
-export type AttributesArray = readonly AttributeValue[];
-
 export interface LogMessage {
   readonly level: 'info' | 'warn' | 'error';
   readonly code: string;
@@ -22,7 +14,7 @@ export interface EntryAssets {
   readonly names: readonly string[];
 }
 
-export interface BaseEntry<Source, Attrs extends Attributes> {
+export interface BaseEntry<Source, Data> {
   readonly contentId: string;
   readonly source: Source;
   readonly access: EntryAccess;
@@ -30,41 +22,41 @@ export interface BaseEntry<Source, Attrs extends Attributes> {
   readonly title: string;
   readonly assets?: EntryAssets;
   readonly log?: LogMessage[];
-  readonly attrs: Attrs;
+  readonly data: Data;
 }
 
 export interface ParentEntry<
   Source = any,
   E extends IndexEntry = IndexEntry,
-  Attrs extends Attributes = Attributes,
-> extends BaseEntry<Source, Attrs> {
+  Data = {},
+> extends BaseEntry<Source, Data> {
   readonly type: 'parent';
   readonly subEntries: E[],
 }
 
 export interface LeafEntry<
-  Source = any, Attrs extends Attributes = Attributes,
-> extends BaseEntry<Source, Attrs> {
+  Source = any, Data = {},
+> extends BaseEntry<Source, Data> {
   readonly type: 'leaf';
 }
 
 export type IndexEntry<
-  Source = any, Attrs extends Attributes = Attributes,
-> = ParentEntry<Source, IndexEntry, Attrs> | LeafEntry<Source, Attrs>;
+  Source = any, Data = {},
+> = ParentEntry<Source, IndexEntry, Data> | LeafEntry<Source, Data>;
 
-export const buildBaseEntry = <Source, Attrs extends Attributes>(
+export const buildBaseEntry = <Source, Data>(
   contentId: string,
   name: string,
   source: Source,
   access: EntryAccess,
-  attrs: Attrs,
-): BaseEntry<Source, Attrs> => ({
+  data: Data,
+): BaseEntry<Source, Data> => ({
   contentId,
   source,
   access,
   name: name,
   title: name,
-  attrs,
+  data: data,
 });
 
 export interface Indexer {
@@ -76,12 +68,12 @@ export interface Indexer {
   indexChildren<Source, Entry extends IndexEntry>(
     name: string, sources: Source[], contentType: ContentType<Source, Entry, any>,
   ): Promise<Entry[]>;
-  buildLeafEntry<Source, Attrs extends Attributes>(
-    name: string, source: Source, access: EntryAccess, attrs: Attrs
-  ): LeafEntry<Source, Attrs>;
-  buildParentEntry<Source, Entry extends IndexEntry, Attrs extends Attributes>(
-    name: string, source: Source, access: EntryAccess, attrs: Attrs, subEntries: Entry[],
-  ): ParentEntry<Source, Entry, Attrs>;
+  buildLeafEntry<Source, Data>(
+    name: string, source: Source, access: EntryAccess, data: Data
+  ): LeafEntry<Source, Data>;
+  buildParentEntry<Source, Entry extends IndexEntry, Data>(
+    name: string, source: Source, access: EntryAccess, data: Data, subEntries: Entry[],
+  ): ParentEntry<Source, Entry, Data>;
 }
 
 export class FilefishIndexer implements Indexer {
@@ -116,22 +108,22 @@ export class FilefishIndexer implements Indexer {
     );
   }
 
-  public buildLeafEntry<Source, Attrs extends Attributes>(
-    name: string, source: Source, access: EntryAccess, attrs: Attrs,
-  ): LeafEntry<Source, Attrs> {
+  public buildLeafEntry<Source, Data>(
+    name: string, source: Source, access: EntryAccess, data: Data,
+  ): LeafEntry<Source, Data> {
     return {
-      ...buildBaseEntry(this.contentId, name, source, access, attrs),
+      ...buildBaseEntry(this.contentId, name, source, access, data),
       type: 'leaf',
     }
   }
 
   public buildParentEntry<
-    Source, Entry extends IndexEntry, Attrs extends Attributes
+    Source, Entry extends IndexEntry, Data,
   >(
-    name: string, source: Source, access: EntryAccess, attrs: Attrs, subEntries: Entry[],
-  ): ParentEntry<Source, Entry, Attrs> {
+    name: string, source: Source, access: EntryAccess, data: Data, subEntries: Entry[],
+  ): ParentEntry<Source, Entry, Data> {
     return {
-      ...buildBaseEntry(this.contentId, name, source, access, attrs),
+      ...buildBaseEntry(this.contentId, name, source, access, data),
       type: 'parent',
       subEntries,
     }
