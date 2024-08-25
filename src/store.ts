@@ -1,4 +1,4 @@
-import { FsNode } from "./fsys";
+import { FsNode } from "./fsys.js";
 
 export interface EntryAttrs {
   [key: string]: any,
@@ -32,8 +32,13 @@ export interface StoreEntry {
 }
 
 export interface StoreAsset {
-  path: string,
+  entryPath: string,
+  resourcePath: string,
   fsPath: string,
+}
+
+export const buldAssetPath = (asset: StoreAsset): string => {
+  return `${asset.entryPath}/!asset/${asset.resourcePath}`;
 }
 
 export interface FilefishStore {
@@ -42,8 +47,8 @@ export interface FilefishStore {
   deleteEntry(id: string): Promise<void>,
   findChildren(parentPath: string): Promise<StoreEntry[]>,
   putAsset(asset: StoreAsset): Promise<void>,
-  deleteAsset(path: string): Promise<void>,
-  findAsset(path: string): Promise<StoreAsset | 'not-found'>,
+  deleteAsset(entryPath: string, resourcePath: string): Promise<void>,
+  findAsset(entryPath: string, resourcePath: string): Promise<StoreAsset | 'not-found'>,
 }
 
 export class Cursor {
@@ -120,6 +125,15 @@ export class Cursor {
     }
     
     return this.parentPath[this.parentPath.length - 1];
+  }
+
+  public async getAssetPath(resourcePath: string): Promise<string | null> {
+    const asset = await this.ffStore.findAsset(this.entry().path, resourcePath);
+    if (asset === 'not-found') {
+      return null;
+    }
+
+    return buldAssetPath(asset);
   }
 
   // public nthSibling(steps: number): Cursor | null {

@@ -2,7 +2,7 @@ import { StoreEntry, FilefishStore, StoreAsset, Cursor, publicAgent } from "./st
 
 export class MemoryStore implements FilefishStore {
   private entries: StoreEntry[] = [];
-  private assets: { [path: string]: string } = {};
+  private assets: StoreAsset[] = [];
 
   public async findEntry(entryPath: string): Promise<Cursor | 'not-found'> {
     const segments = entryPath.split('/').slice(1);
@@ -38,22 +38,30 @@ export class MemoryStore implements FilefishStore {
   }
 
   public async putAsset(asset: StoreAsset): Promise<void> {
-    this.assets[asset.path] = asset.fsPath;
+    this.assets.push(asset);
   }
 
-  public async deleteAsset(assetPath: string): Promise<void> {
-    delete this.assets[assetPath];
-  }
-
-  public async findAsset(assetPath: string): Promise<StoreAsset | 'not-found'> {
-    if (assetPath in this.assets) {
-      return { path: assetPath, fsPath: this.assets[assetPath] };
-    } else {
-      return 'not-found';
+  public async deleteAsset(entryPath: string, resourcePath: string): Promise<void> {
+    const index = this.assets.findIndex(
+      (asset) => asset.entryPath === entryPath && asset.resourcePath === resourcePath
+    );
+    if (index !== -1) {
+      this.assets.splice(index, 1);
     }
   }
 
+  public async findAsset(
+    entryPath: string, resourcePath: string
+  ): Promise<StoreAsset | 'not-found'> {
+    return this.assets.find(
+      (asset) => asset.entryPath === entryPath && asset.resourcePath === resourcePath
+    ) ?? 'not-found';
+  }
+
   public dump(): string {
-    return `${JSON.stringify(this.entries, null, 2)}\n${JSON.stringify(this.assets, null, 2)}`;
+    return JSON.stringify({
+      entries: this.entries,
+      assets: this.assets,
+    }, null, 2);
   }
 }

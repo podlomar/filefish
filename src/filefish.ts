@@ -37,7 +37,6 @@ type Indexer = FileIndexer | FolderIndexer | NodeIndexer;
 interface AssetTag {
   tag: '!asset',
   path: string,
-  fsPath: string,
 }
 
 const isAssetTag = (value: unknown): value is AssetTag => {
@@ -53,11 +52,10 @@ const isAssetTag = (value: unknown): value is AssetTag => {
 
 const assetTag: ScalarTag = {
   tag: '!asset',
-  resolve(str): AssetTag {
+  resolve(str: string): AssetTag {
     return {
       tag: '!asset',
       path: str,
-      fsPath: path.resolve(str),
     }
   }
 }
@@ -71,7 +69,8 @@ export const collectFolderNodes = async (folder: FolderNode): Promise<FsNode[]> 
       continue;
     }
 
-    const node = await readNode(path.resolve(folder.fsPath, dirent.name));
+    const fsPath = path.resolve(folder.fsPath, dirent.name);
+    const node = await readNode(fsPath);
     if (node !== null) {
       fsNodes.push(node);
     }
@@ -141,16 +140,20 @@ export const indexFolder = async (
     for (const key in parsed) {
       if (!key.startsWith('_')) {
         const value = parsed[key];
-        attrs[key] = value;
         if (isAssetTag(value)) {
+          const fsPath = path.join(folder.fsPath, value.path);
           assets.push({
-            path: value.path,
-            fsPath: path.join(folder.fsPath, value.path),
-          });      
+            entryPath: `${parentPath ?? ''}/${folder.baseName}`,
+            resourcePath: value.path,
+            fsPath,
+          });
+          attrs[key] = value.path;
+        } else {
+          attrs[key] = value;
         }
       }
     }
-    
+
     const entry = createEntry(folder, parentPath, order, attrs);
     if (parsed._include === undefined) {
       return {
@@ -192,6 +195,11 @@ export const indexFolder = async (
   };
 }
 
+export interface AssetContent {
+  data: Buffer,
+  contentType: string,
+}
+
 export class Filefish {
   private store: FilefishStore;
   private indexers: Map<string, Indexer>;
@@ -220,6 +228,25 @@ export class Filefish {
   
     return this.indexFolder(node, null, 0);
   };
+
+  public async loadAsset(assetPath: string): Promise<AssetContent | null> {
+    const [entryPath, resourcePath] = assetPath.split('/!asset/');
+    const cursor = await this.store.findEntry(entryPath);
+    if (cursor === 'not-found') {
+      return null;
+    }
+
+    const asset = await this.store.findAsset(entryPath, resourcePath);
+    if (asset === 'not-found') {
+      return null;
+    }
+
+    const data = await fs.readFile(asset.fsPath);
+    return { 
+      data,
+      contentType: mime.lookup(asset.fsPath) || 'application/octet-stream',
+    };
+  }
 
   private async processIndex(
     index: EntryIndex, parentPath: string | null,
@@ -278,7 +305,7 @@ export class Filefish {
     const index = indexer === undefined || indexer.nodeType === 'file'
       ? await indexFolder(folder, parentPath, order)
       : await indexer.index(folder, parentPath, order);
-  
+
     if (index === null) {
       return;
     }

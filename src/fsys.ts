@@ -20,7 +20,7 @@ export interface FolderNode extends BaseNode {
 export type FsNode = FileNode | FolderNode;
 
 export const readNode = async (
-  fsPath: string, entityType?: string
+  fsPath: string, providedEntityType?: string
 ): Promise<FsNode | null> => {
   const regex = /^(.+)\((.+)\)/;
   try {
@@ -37,15 +37,20 @@ export const readNode = async (
     if (stat.isDirectory()) {
       return {
         nodeType: 'folder',
-        entityType: entityType ?? matchedEntityType ?? null,
+        entityType: providedEntityType ?? matchedEntityType ?? null,
         fsPath: path.resolve(fsPath),
         baseName: matchedName,
       };
     }
 
+    const entityType = providedEntityType ?? matchedEntityType;
+    if (entityType === null) {
+      return null;
+    }
+
     return {
       nodeType: 'file',
-      entityType: entityType ?? matchedEntityType ?? null,
+      entityType,
       fsPath: path.resolve(fsPath),
       baseName: matchedName,
       ext: parsed.ext,

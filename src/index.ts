@@ -1,4 +1,4 @@
-import { Filefish, EntryIndex, createEntry } from "./filefish.js";
+import { Filefish, EntryIndex, createEntry, AssetContent } from "./filefish.js";
 import { FileNode, FolderNode, FsNode, readNode } from "./fsys.js";
 import { MemoryStore } from "./memory-store.js";
 import { FilefishStore, StoreEntry, Cursor } from "./store.js";
@@ -8,6 +8,7 @@ export {
   MemoryStore,
   FilefishStore,
   createEntry,
+  AssetContent,
   StoreEntry,
   Cursor,
   EntryIndex,
