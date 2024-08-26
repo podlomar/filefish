@@ -125,6 +125,16 @@ export const createEntry = (
   };
 }
 
+type IncludeItem = string | {
+  file: string,
+  type: string,
+};
+
+interface EntryFile {
+  [key: string]: any,
+  _include?: IncludeItem[],
+}
+
 export const indexFolder = async (
   folder: FolderNode, parentPath: string | null, order: number,
 ): Promise<EntryIndex> => {
@@ -133,13 +143,13 @@ export const indexFolder = async (
       path.join(folder.fsPath, 'entry.ff.yml'),
       'utf-8'
     );
-    const parsed = yaml.parse(content, { customTags: [assetTag] });
+    const entryFile: EntryFile = yaml.parse(content, { customTags: [assetTag] });
     const attrs: EntryAttrs = {};
     const assets: StoreAsset[] = [];
 
-    for (const key in parsed) {
+    for (const key in entryFile) {
       if (!key.startsWith('_')) {
-        const value = parsed[key];
+        const value = entryFile[key];
         if (isAssetTag(value)) {
           const fsPath = path.join(folder.fsPath, value.path);
           assets.push({
@@ -155,7 +165,7 @@ export const indexFolder = async (
     }
 
     const entry = createEntry(folder, parentPath, order, attrs);
-    if (parsed._include === undefined) {
+    if (entryFile._include === undefined) {
       return {
         entry,
         assets,
@@ -163,19 +173,25 @@ export const indexFolder = async (
       };
     }
 
-    if (
-      Array.isArray(parsed._include)
-      && parsed._include.every((x: unknown) => typeof x === 'string')
-    ) {
-      const fsPaths = (parsed._include as string[]).map(
-        (p) => path.resolve(folder.fsPath, p)
-      );
-      return {
-        entry,
-        assets,
-        children: await readNodes(fsPaths),
-      };
+    const children: FsNode[] = [];
+    for (const includeItem of entryFile._include) {
+      if (typeof includeItem === 'string') {
+        const fsPath = path.resolve(folder.fsPath, includeItem);
+        const node = await readNode(fsPath);
+        if (node !== null) {
+          children.push(node);
+        }
+      } else {
+        const fsPath = path.resolve(folder.fsPath, includeItem.file);
+        const node = await readNode(fsPath, includeItem.type);
+        if (node !== null) {
+          node.entityType = includeItem.type;
+          children.push(node);
+        }
+      }
     }
+    
+    return { entry, assets, children };
   } catch (error) {
     if (
       error instanceof Error

@@ -45,7 +45,7 @@ export interface FilefishStore {
   findEntry(path: string): Promise<Cursor | 'not-found'>,
   putEntry(entry: StoreEntry): Promise<void>,
   deleteEntry(id: string): Promise<void>,
-  findChildren(parentPath: string): Promise<StoreEntry[]>,
+  findChildren(parentPath: string, entryType?: string): Promise<StoreEntry[]>,
   putAsset(asset: StoreAsset): Promise<void>,
   deleteAsset(entryPath: string, resourcePath: string): Promise<void>,
   findAsset(entryPath: string, resourcePath: string): Promise<StoreAsset | 'not-found'>,
@@ -106,10 +106,9 @@ export class Cursor {
     return new Cursor(this.ffStore, this.parentPath, this.agent);
   }
 
-  public async children(): Promise<Cursor[]> {
+  public async children(entryType?: string): Promise<Cursor[]> {
     const entry = this.entry();
-    const children = await this.ffStore.findChildren(entry.path);
-    
+    const children = await this.ffStore.findChildren(entry.path, entryType);    
     return children.map(
       (child) => new Cursor(
         this.ffStore,

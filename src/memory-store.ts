@@ -33,8 +33,13 @@ export class MemoryStore implements FilefishStore {
     this.entries = this.entries.filter((entry) => entry.path !== entryPath);
   }
 
-  public async findChildren(entryPath: string): Promise<StoreEntry[]> {
-    return this.entries.filter((entry) => entry.parent === entryPath);
+  public async findChildren(entryPath: string, entryType?: string): Promise<StoreEntry[]> {
+    return this.entries.filter(
+      (entry) => (
+        entry.parent === entryPath &&
+        (entryType === undefined || entry.schema === entryType)
+      )
+    );
   }
 
   public async putAsset(asset: StoreAsset): Promise<void> {
