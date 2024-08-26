@@ -42,6 +42,14 @@ export class MemoryStore implements FilefishStore {
     );
   }
 
+  public async getNthChild(
+    parentPath: string, index: number
+  ): Promise<StoreEntry | 'not-found'> {
+    return this.entries.find(
+      (entry) => entry.parent === parentPath && entry.order === index
+    ) ?? 'not-found';
+  }
+
   public async putAsset(asset: StoreAsset): Promise<void> {
     this.assets.push(asset);
   }

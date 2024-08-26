@@ -46,6 +46,7 @@ export interface FilefishStore {
   putEntry(entry: StoreEntry): Promise<void>,
   deleteEntry(id: string): Promise<void>,
   findChildren(parentPath: string, entryType?: string): Promise<StoreEntry[]>,
+  getNthChild(parentPath: string, index: number): Promise<StoreEntry | 'not-found'>,
   putAsset(asset: StoreAsset): Promise<void>,
   deleteAsset(entryPath: string, resourcePath: string): Promise<void>,
   findAsset(entryPath: string, resourcePath: string): Promise<StoreAsset | 'not-found'>,
@@ -135,80 +136,30 @@ export class Cursor {
     return buldAssetPath(asset);
   }
 
-  // public nthSibling(steps: number): Cursor | null {
-  //   const parent = this.parent();
-  //   if (parent === null) {
-  //     return null;
-  //   }
+  public async nthSibling(steps: number): Promise<Cursor | null> {
+    const index = this.currentEntry.order + steps;
+    if (index < 0) {
+      return null;
+    }
 
-  //   const parentEntry = parent.entry();
-  //   const index = parentEntry.subEntries.indexOf(this.entry()) + steps;
-  //   const sibling = parentEntry.subEntries[index];
+    const parent = this.parent();
+    if (parent === null) {
+      return null;
+    }
 
-  //   if (sibling === undefined) {
-  //     return null;
-  //   }
+    const child = await this.store().getNthChild(parent.entry().path, index);
+    if (child === 'not-found') {
+      return null;
+    }
 
-  //   return new Cursor(
-  //     this.parentPath,
-  //     {
-  //       entry: sibling as Entry,
-  //       pos: index,
-  //     },
-  //     this.agent,
-  //   );
-  // }
+    return new Cursor(this.ffStore, [...this.parentPath, child], this.agent);
+  }
 
-  // public nthChild(index: number): Cursor<ChildOf<Entry>> | null {
-  //   const entry = this.entry();
+  public async prevSibling(): Promise<Cursor | null> {
+    return this.nthSibling(-1);
+  }
 
-  //   if (entry.type === 'leaf') {
-  //     return null;
-  //   }
-    
-  //   const child = entry.subEntries.at(index) as ChildOf<Entry> | undefined;
-  //   if (child === undefined) {
-  //     return null;
-  //   }
-
-  //   return new Cursor(
-  //     [...this.parentPath, this.current],
-  //     {
-  //       entry: child,
-  //       pos: index,
-  //     },
-  //     this.agent,
-  //   );
-  // }
-
-  // public nextSibling(): Cursor<Entry> | null {
-  //   return this.nthSibling(1);
-  // }
-
-  // public prevSibling(): Cursor<Entry> | null {
-  //   return this.nthSibling(-1);
-  // }
-
-  // public navigate(...segments: string[]): Cursor | null {
-  //   const steps = segments.flatMap((segment) => segment.split('/'));
-  //   const parentPath: PathItem[] = [];
-  //   let currentItem: PathItem = this.current;
-    
-  //   for(const step of steps) {
-  //     if (currentItem.entry.type !== 'parent') {
-  //       return null;
-  //     }
-        
-  //     const index = currentItem.entry.subEntries.findIndex((e) => e.name === step);
-  //     if (index === -1) {
-  //       return null;
-  //     }
-      
-  //     const entry = currentItem.entry.subEntries[index];
-  //     parentPath.push(currentItem);
-  //     currentItem = { entry, pos: index };
-  //   }
-
-  //   return new Cursor([...this.parentPath, ...parentPath], currentItem, this.agent);
-  // }
+  public async nextSibling(): Promise<Cursor | null> {
+    return this.nthSibling(1);
+  }
 };
