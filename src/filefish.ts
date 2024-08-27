@@ -9,12 +9,12 @@ type EntryAttrs = Record<string, any>;
 
 export interface EntryIndex {
   entry: StoreEntry | null;
-  children: FsNode[];
+  childNodes: FsNode[];
   assets: StoreAsset[];
 }
 
-type IndexFn<T extends FsNode> = (
-  node: T, parentPath: string | null, order: number,
+type IndexFn<TNode extends FsNode> = (
+  context: IndexingContext<TNode>,
 ) => Promise<EntryIndex | null>;
 
 interface FileIndexer {
@@ -96,29 +96,30 @@ export const toTitle = (str: string): string => {
 }
 
 export const createEntry = (
-  source: FsNode,
+  fsNode: FsNode,
   parentPath: string | null,
   order: number,
   attrs: EntryAttrs,
   entityType?: string,
 ): StoreEntry | null => {
-  const mimeType = source.nodeType === 'file'
-    ? mime.lookup(source.ext) || 'application/octet-stream'
+  const mimeType = fsNode.nodeType === 'file'
+    ? mime.lookup(fsNode.ext) || 'application/octet-stream'
     : 'application/x-directory';
 
-  const schema = source.entityType ?? entityType ?? null;
+  const schema = fsNode.entityType ?? entityType ?? null;
   if (schema === null) {
     return null;
   }
 
   return {
-    source,
-    name: source.baseName,
-    path: `${parentPath ?? ''}/${source.baseName}`,
+    nodeType: fsNode.nodeType,
+    fsPath: fsNode.fsPath,
+    name: fsNode.baseName,
+    path: `${parentPath ?? ''}/${fsNode.baseName}`,
     schema,
     parent: parentPath,
     access: 'public',
-    title: attrs.title ?? toTitle(source.baseName),
+    title: attrs.title ?? toTitle(fsNode.baseName),
     order,
     mime: mimeType,
     attrs,
@@ -169,7 +170,7 @@ export const indexFolder = async (
       return {
         entry,
         assets,
-        children: await collectFolderNodes(folder),
+        childNodes: await collectFolderNodes(folder),
       };
     }
 
@@ -191,7 +192,7 @@ export const indexFolder = async (
       }
     }
     
-    return { entry, assets, children };
+    return { entry, assets, childNodes: children };
   } catch (error) {
     if (
       error instanceof Error
@@ -206,7 +207,7 @@ export const indexFolder = async (
 
   return {
     entry: createEntry(folder, parentPath, order, {}),
-    children: await collectFolderNodes(folder),
+    childNodes: await collectFolderNodes(folder),
     assets: [],
   };
 }
@@ -214,6 +215,54 @@ export const indexFolder = async (
 export interface AssetContent {
   data: Buffer,
   contentType: string,
+}
+
+export class IndexingContext<TNode extends FsNode> {
+  public readonly fsNode: TNode;
+  public readonly schema: string | null;
+  public readonly parentPath: string | null;
+  public readonly order: number;
+  public entryAttrs: EntryAttrs = {};
+
+  private assets: StoreAsset[] = [];
+  private childNodes: FsNode[] = [];
+
+  public constructor(
+    fsNode: TNode, schema: string | null, parentPath: string | null, order: number
+  ) {
+    this.fsNode = fsNode;
+    this.schema = schema;
+    this.parentPath = parentPath;
+    this.order = order;
+  }
+
+  public addAsset(resourcePath: string): void {
+    this.assets.push({
+      entryPath: `${this.parentPath ?? ''}/${this.fsNode.baseName}`,
+      resourcePath,
+      fsPath: path.join(this.fsNode.fsPath, resourcePath),
+    });
+  }
+
+  public async insertChildNode(fsPath: string, schema: string): Promise<FsNode | null> {
+    const fsNode = await readNode(fsPath, schema);
+    if (fsNode === null) {
+      return null;
+    }
+
+    this.childNodes.push(fsNode);
+    return fsNode;
+  }
+
+  public createIndex(): EntryIndex {
+    return {
+      entry: createEntry(
+        this.fsNode, this.parentPath, this.order, this.entryAttrs, this.schema ?? undefined
+      ),
+      childNodes: this.childNodes,
+      assets: this.assets,
+    };
+  }
 }
 
 export class Filefish {
@@ -276,8 +325,8 @@ export class Filefish {
     }
 
     const currentPath = index.entry === null ? parentPath : index.entry.path;
-    for (let i = 0; i < index.children.length; i++) {
-      const fsNode = index.children[i];
+    for (let i = 0; i < index.childNodes.length; i++) {
+      const fsNode = index.childNodes[i];
       fsNode.nodeType === 'file'
         ? await this.indexFile(fsNode, currentPath, i)
         : await this.indexFolder(fsNode, currentPath, i);
@@ -297,10 +346,10 @@ export class Filefish {
     const index = indexer === undefined || indexer.nodeType === 'folder'
       ? {
         entry: createEntry(file, parentPath, order, {}),
-        children: [],
+        childNodes: [],
         assets: [],
       } 
-      : await indexer.index(file, parentPath, order);
+      : await indexer.index(new IndexingContext(file, file.entityType, parentPath, order));
 
     if (index === null) {
       return;
@@ -320,7 +369,7 @@ export class Filefish {
 
     const index = indexer === undefined || indexer.nodeType === 'file'
       ? await indexFolder(folder, parentPath, order)
-      : await indexer.index(folder, parentPath, order);
+      : await indexer.index(new IndexingContext(folder, folder.entityType, parentPath, order));
 
     if (index === null) {
       return;

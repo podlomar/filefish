@@ -19,7 +19,8 @@ export const publicAgent: Agent = {
 };
 
 export interface StoreEntry {
-  source: FsNode,
+  nodeType: FsNode['nodeType'],
+  fsPath: string,
   name: string,
   path: string,
   schema: string,
